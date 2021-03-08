@@ -13,10 +13,11 @@ from minder.utils import FuzzyTime
 
 @dataclass
 class Reminder(RedisEntry):
-    member_id: str = field(default_factory=str)
+    redis_id: str = 'reminders'
+    member_id: int = field(default_factory=int)
     member_name: str = field(default_factory=str)
 
-    channel_id: str = field(default_factory=str)
+    channel_id: int = field(default_factory=int)
     channel_name: str = field(default_factory=str)
 
     provided_when: str = field(default_factory=str)
@@ -27,10 +28,6 @@ class Reminder(RedisEntry):
 
     is_complete: bool = field(default=False, compare=False)
     trigger_time: FuzzyTime = field(init=False)
-
-    @property
-    def redis_id(self):
-        return f'{self.member_id}:{self.trigger_ts}'
 
     @property
     def trigger_dt(self) -> datetime:

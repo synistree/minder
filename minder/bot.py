@@ -33,13 +33,14 @@ class MinderBot(commands.Bot):
         logger.info('Finished running sync_init on all cogs')
 
 
-def run_bot(use_token: str = None, **bot_kwargs) -> MinderBot:
-    use_token = use_token or Config.BOT_TOKEN
-
+def build_bot(use_token: str = None, start_bot: bool = True, **bot_kwargs) -> MinderBot:
     bot = MinderBot(**bot_kwargs)
 
     for cog_cls in all_cogs:
         logger.info(f'Registering cog "{cog_cls.__name__}"')
         bot.add_cog(cog_cls(bot))
+
+    if start_bot:
+        bot.run(use_token or Config.BOT_TOKEN)
 
     return bot
