@@ -1,0 +1,15 @@
+.DS_Store
+.env*
+/activate
+/.local/
+/.venv/
+/*.egg-info
+*.sqlite?
+*.pid
+.*.sw[poc]
+*.py[co]
+__pycache__/
+/build/
+.azure/
+.idea/
+ipy/.ipynb_checkpoints

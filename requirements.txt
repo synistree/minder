@@ -1,0 +1,7 @@
+click
+dateparser
+discord.py
+python-dotenv
+humanize
+redis
+IPython

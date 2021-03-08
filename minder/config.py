@@ -1,0 +1,52 @@
+import os
+import string
+import random
+
+from dotenv import load_dotenv
+
+from typing import Any, Optional
+
+env_path = os.environ.get('ENV_PATH', os.path.abspath(os.path.join(os.path.curdir, '.env')))
+
+if not os.path.exists(env_path):
+    raise Exception(f'No ".env" found in "{env_path} or ENV_PATH (if set)')
+
+load_dotenv(env_path)
+
+
+def _build_secret_key(length: int = 32, charset=string.ascii_letters + string.digits) -> str:
+    return ''.join(random.choice(charset) for _ in range(length))
+
+
+def _load_from_environ(name: str, default: Optional[Any]) -> Any:
+    if name not in os.environ:
+        if default is None:
+            raise ValueError(f'Cannot find required config value in environ for "{name}". Cannot continue.')
+
+        return default
+
+    value = os.environ[name]
+
+    if default and isinstance(default, bool):
+        return True if value else False
+
+    return value
+
+
+class Config:
+    BOT_PREFIX: str = _load_from_environ('BOT_PREFIX', '%')
+    ENABLE_DEBUG: bool = _load_from_environ('ENABLE_DEBUG', False)
+    QUART_HOST: str = _load_from_environ('QUART_HOST', '0.0.0.0')
+    QUART_PORT: int = _load_from_environ('QUART_PORT', 9090)
+    REDIS_URL: str = _load_from_environ('REDIS_URL', 'redis://:@localhost:6379/0')
+    SQLALCHEMY_ECHO: bool = _load_from_environ('SQLALCHEMY_ECHO', True)
+    SQLALCHEMY_TRACK_MODIFICATIONS: bool = _load_from_environ('SQLALCHEMY_TRACK_MODIFICATIONS', False)
+    ENABLE_AUTORELOAD: bool = _load_from_environ('ENABLE_AUTORELOAD', False)
+    QUART_AUTH_COOKIE_SECURE: bool = _load_from_environ('QUART_AUTH_COOKIE_SECURE', False)
+
+    # Required Private Values
+    BOT_TOKEN: str = _load_from_environ('BOT_TOKEN', None)
+    SECRET_KEY: str = _load_from_environ('SECRET_KEY', _build_secret_key())
+    SQLALCHEMY_DATABASE_URI: str = _load_from_environ('SQLALCHEMY_DATABASE_URI', None)
+
+    _secret_attrs = ['BOT_TOKEN', 'SECRET_KEY', 'SQLALCHEMY_DATABASE_URI']

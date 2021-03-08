@@ -1,0 +1,45 @@
+import logging
+
+from discord.ext import commands
+from redisent.helpers import RedisentHelper
+
+from minder.config import Config
+from minder.cogs import all_cogs
+
+logger = logging.getLogger(__name__)
+
+
+class MinderBot(commands.Bot):
+    init_done: bool = False
+
+    def __init__(self, **kwargs) -> None:
+        kwargs.pop('command_prefix', None)
+        if 'description' not in kwargs:
+            kwargs['description'] = 'A simple (re)minder bot'
+
+        super().__init__(command_prefix=Config.BOT_PREFIX, **kwargs)
+
+        self.redis_helper = RedisentHelper(RedisentHelper.build_pool_sync(Config.REDIS_URL))
+
+        self._sync_init()
+        self.init_done = True
+
+    def _sync_init(self) -> None:
+        for cog in self.cogs.values():
+            init_fn = getattr(cog, '_sync_init', None)
+            if init_fn:
+                init_fn()
+
+        logger.info('Finished running sync_init on all cogs')
+
+
+def run_bot(use_token: str = None, **bot_kwargs) -> MinderBot:
+    use_token = use_token or Config.BOT_TOKEN
+
+    bot = MinderBot(**bot_kwargs)
+
+    for cog_cls in all_cogs:
+        logger.info(f'Registering cog "{cog_cls.__name__}"')
+        bot.add_cog(cog_cls(bot))
+
+    return bot
