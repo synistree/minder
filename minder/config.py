@@ -34,19 +34,18 @@ def _load_from_environ(name: str, default: Optional[Any]) -> Any:
 
 
 class Config:
-    BOT_PREFIX: str = _load_from_environ('BOT_PREFIX', '%')
     ENABLE_DEBUG: bool = _load_from_environ('ENABLE_DEBUG', False)
+    BOT_PREFIX: str = _load_from_environ('BOT_PREFIX', '%')
     QUART_HOST: str = _load_from_environ('QUART_HOST', '0.0.0.0')
     QUART_PORT: int = _load_from_environ('QUART_PORT', 9090)
     REDIS_URL: str = _load_from_environ('REDIS_URL', 'redis://:@localhost:6379/0')
-    SQLALCHEMY_ECHO: bool = _load_from_environ('SQLALCHEMY_ECHO', True)
-    SQLALCHEMY_TRACK_MODIFICATIONS: bool = _load_from_environ('SQLALCHEMY_TRACK_MODIFICATIONS', False)
     ENABLE_AUTORELOAD: bool = _load_from_environ('ENABLE_AUTORELOAD', False)
     QUART_AUTH_COOKIE_SECURE: bool = _load_from_environ('QUART_AUTH_COOKIE_SECURE', False)
+    USE_DEFAULT_ERROR_HANDLER: bool = _load_from_environ('USE_DEFAULT_ERROR_HANDLER', True)
+    VERBOSE_ERROR_MESSAGES: bool = _load_from_environ('VERBOSE_ERROR_MESSAGES', True)
 
     # Required Private Values
     BOT_TOKEN: str = _load_from_environ('BOT_TOKEN', None)
     SECRET_KEY: str = _load_from_environ('SECRET_KEY', _build_secret_key())
-    SQLALCHEMY_DATABASE_URI: str = _load_from_environ('SQLALCHEMY_DATABASE_URI', None)
 
-    _secret_attrs = ['BOT_TOKEN', 'SECRET_KEY', 'SQLALCHEMY_DATABASE_URI']
+    _secret_attrs = ['BOT_TOKEN', 'SECRET_KEY']

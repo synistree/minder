@@ -19,7 +19,7 @@ class MinderBot(commands.Bot):
 
         super().__init__(command_prefix=Config.BOT_PREFIX, **kwargs)
 
-        self.redis_helper = RedisentHelper(RedisentHelper.build_pool_sync(Config.REDIS_URL))
+        self.redis_helper = RedisentHelper(RedisentHelper.build_pool(Config.REDIS_URL))
 
         self._sync_init()
         self.init_done = True

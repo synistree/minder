@@ -64,7 +64,7 @@ class FuzzyTimeConverter(commands.Converter):
         try:
             fuz_time = FuzzyTime(when, created_time=dt_now)
         except ValueError as ex:
-            logger.error(f'Unable to parse fuzzy time for "{ctx.author.name}": {ex}')
-            raise commands.BadArgument(f'Unable to parse fuzzy time value: "{when}"', when)
+            await ctx.send(f'Sorry {ctx.author.mention}, provided fuzzy time `{when}` cannot be resolved :frowning: Try something like: `in 5 minutes`')
+            raise commands.BadArgument(f'Unable to parse fuzzy time for "{ctx.author.name}": {ex}')
 
         return fuz_time

@@ -10,6 +10,8 @@
 *.py[co]
 __pycache__/
 /build/
+/report/
 .azure/
 .idea/
 ipy/.ipynb_checkpoints
+.coverage
