@@ -43,9 +43,12 @@ class Config:
     QUART_AUTH_COOKIE_SECURE: bool = _load_from_environ('QUART_AUTH_COOKIE_SECURE', False)
     USE_DEFAULT_ERROR_HANDLER: bool = _load_from_environ('USE_DEFAULT_ERROR_HANDLER', True)
     VERBOSE_ERROR_MESSAGES: bool = _load_from_environ('VERBOSE_ERROR_MESSAGES', True)
+    USE_TIMEZONE: str = _load_from_environ('USE_TIMEZONE', 'UTC')
+    SQLALCHEMY_ECHO: bool = _load_from_environ('SQLALCHEMY_ECHO', False)
 
     # Required Private Values
     BOT_TOKEN: str = _load_from_environ('BOT_TOKEN', None)
     SECRET_KEY: str = _load_from_environ('SECRET_KEY', _build_secret_key())
+    SQLALCHEMY_URI: str = _load_from_environ('SQLALCHEMY_URI', None)
 
-    _secret_attrs = ['BOT_TOKEN', 'SECRET_KEY']
+    _secret_attrs = ['BOT_TOKEN', 'SECRET_KEY', 'SQLALCHEMY_URI']

@@ -2,14 +2,18 @@ import logging
 
 from discord.ext import commands
 from redisent.helpers import RedisentHelper
+from sqlalchemy.engine import Engine, create_engine
 
 from minder.config import Config
-from minder.cogs import all_cogs
+from minder.cogs.base import BaseCog
 
 logger = logging.getLogger(__name__)
 
 
 class MinderBot(commands.Bot):
+    redis_helper: RedisentHelper
+    sa_engine: Engine
+
     init_done: bool = False
 
     def __init__(self, **kwargs) -> None:
@@ -20,6 +24,12 @@ class MinderBot(commands.Bot):
         super().__init__(command_prefix=Config.BOT_PREFIX, **kwargs)
 
         self.redis_helper = RedisentHelper(RedisentHelper.build_pool(Config.REDIS_URL))
+
+        do_echo = True if Config.SQLALCHEMY_ECHO else False
+        self.sa_engine = create_engine(Config.SQLALCHEMY_URI, echo=do_echo)
+
+        from minder.db import Base
+        Base.metadata.create_all(self.sa_engine)
 
         self._sync_init()
         self.init_done = True
@@ -35,8 +45,9 @@ class MinderBot(commands.Bot):
 
 def build_bot(use_token: str = None, start_bot: bool = True, **bot_kwargs) -> MinderBot:
     bot = MinderBot(**bot_kwargs)
+    bot.add_cog(BaseCog(bot))
 
-    for cog_cls in all_cogs:
+    for cog_cls in BaseCog._subclasses:
         logger.info(f'Registering cog "{cog_cls.__name__}"')
         bot.add_cog(cog_cls(bot))
 

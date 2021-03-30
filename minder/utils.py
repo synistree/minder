@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import dateparser
+import os
+import os.path
+import pytz
 import logging
 
 from dataclasses import dataclass, field
@@ -8,7 +11,44 @@ from datetime import datetime
 from discord.ext import commands
 from typing import Union, Optional, Mapping, Any, MutableMapping
 
+from minder.config import Config
+from minder.errors import MinderError
+
 logger = logging.getLogger(__name__)
+
+
+def format_datetime(source: datetime, target: Union[str, pytz.tzfile.DstTzInfo] = None, throw_error: bool = True) -> datetime:
+    if not target:
+        target = Config.USE_TIMEZONE or 'UTC'
+
+    try:
+        target_tz = pytz.timezone(target)
+    except pytz.exceptions.UnknownTimeZoneError as ex:
+        err_message = f'Invalid target timezone requested: "{target}"'
+        if throw_error:
+            raise MinderError(err_message) from ex
+
+        logger.warning(err_message)
+        return source
+    except pytz.exceptions.NonExistentTimeError as ex:
+        err_message = f'Non-existent target timezone requested: "{target}"'
+        if throw_error:
+            raise MinderError(err_message) from ex
+
+        logger.warning(err_message)
+        return source
+
+    return source.astimezone(target_tz)
+
+
+def get_working_path(use_working_path: str = None) -> str:
+    working_path = os.path.expanduser(use_working_path or Config.WORKING_PATH)
+
+    if not os.path.exists(working_path):
+        logger.info(f'Creating new wrlibg path in "{working_path}"')
+        os.makedirs(working_path)
+
+    return working_path
 
 
 @dataclass
@@ -20,11 +60,11 @@ class FuzzyTime:
 
     @property
     def created_timestamp(self) -> float:
-        return self.created_time.timestamp()
+        return format_datetime(self.created_time).timestamp()
 
     @property
     def resolved_timestamp(self) -> float:
-        return self.resolved_time.timestamp()
+        return format_datetime(self.resolved_time).timestamp()
 
     @property
     def num_seconds_left(self) -> Optional[int]:
@@ -49,7 +89,7 @@ class FuzzyTime:
         kwargs: MutableMapping[str, Any] = {'provided_when': provided_when}
 
         if created_ts:
-            kwargs['created_time'] = datetime.fromtimestamp(created_ts) if isinstance(created_ts, (int, float,)) else created_ts
+            kwargs['created_time'] = format_datetime(datetime.fromtimestamp(created_ts) if isinstance(created_ts, (int, float,)) else created_ts)
 
         return FuzzyTime(**kwargs)
 

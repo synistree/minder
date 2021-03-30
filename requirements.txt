@@ -6,3 +6,4 @@ python-dotenv
 humanize
 IPython
 redisent
+SQLAlchemy

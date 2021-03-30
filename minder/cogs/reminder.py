@@ -1,29 +1,24 @@
-import logging
 import discord
+import logging
 
 from discord.ext import commands
 from typing import List
 
+from minder.cogs.base import BaseCog
 from minder.models import Reminder
 from minder.utils import FuzzyTimeConverter
 
 logger = logging.getLogger(__name__)
 
 
-class ReminderCog(commands.Cog):
-    bot: commands.Bot
-
-    def __init__(self, bot: commands.Bot) -> None:
-        super().__init__()
-        self.bot = bot
-
+class ReminderCog(BaseCog):
     def _get_reminders(self, member_id: int = None) -> List[Reminder]:
         rem_keys = self.bot.redis_helper.keys(redis_id='reminders')
         if not rem_keys:
             return []
 
         reminders = []
-        
+
         for rem_id in rem_keys:
             rem = Reminder.fetch(self.bot.redis_helper, redis_id='reminders', redis_name=rem_id)
 

@@ -6,9 +6,35 @@ import humanize
 from dataclasses import dataclass, field
 from datetime import datetime
 from redisent.models import RedisEntry
-from typing import Union
+from typing import Union, Optional
 
 from minder.utils import FuzzyTime
+
+
+@dataclass
+class UserSettings(RedisEntry):
+    redis_id: str = 'user_settings'
+
+    guild_id: int = field(default_factory=int)
+    member_id: int = field(default_factory=int)
+
+    settings: Mapping[str, Any] = field(default_factory=dict)
+    default_settings: Mapping[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        self.redis_name = f'{self.guild_id}:{self.member_id}'
+
+    def get_value(self, setting_name: str) -> Optional[str]:
+        if setting_name in self.settings:
+            return self.settings[setting_name]
+
+        if setting_name in self.default_settings:
+            return self.default_settings[setting_name]
+
+        if throw_error:
+            raise MinderError(f'Invalid user setting value requested: "{setting_name}"')
+
+        return None
 
 
 @dataclass
@@ -52,8 +78,9 @@ class Reminder(RedisEntry):
         """
 
         self.redis_name = f'{self.member_id}:{self.trigger_ts}'
+        dt_now = datetime.now()
 
-        if self.trigger_dt < datetime.now():
+        if self.trigger_dt < dt_now:
             self.is_complete = True
 
         self.trigger_time = FuzzyTime.build(self.provided_when, created_ts=self.created_ts)
@@ -72,15 +99,23 @@ class Reminder(RedisEntry):
         created_dt = self.trigger_time.created_time
         trigger_dt = self.trigger_time.resolved_time
 
+        if self.is_complete:
+            time_left = 'N/A'
+            out_prefix = 'Complete Reminder'
+        else:
+            time_left = humanize.naturaltime(self.trigger_time.num_seconds_left, future=True)
+            out_prefix = 'Pending Reminder'
+
         if as_embed:
             if isinstance(as_embed, discord.Embed):
                 emb = as_embed
             else:
-                emb = discord.Embed(title=f'Reminder for "{self.member_name}" @ `{trigger_dt.ctime()}`',
-                                    description=f'Reminder is set for {member_str} as requested at `{created_dt.ctime()}` in {channel_str} :wink:',
+                emb = discord.Embed(title=f'{out_prefix} for "{self.member_name}" @ `{trigger_dt.ctime()}`',
+                                    description=f'Reminder for {member_str} as requested at `{created_dt.ctime()}` in {channel_str} :wink:',
                                     color=discord.Color.dark_grey())
 
             emb.add_field(name='Remind At', value=f'`{trigger_dt.ctime()}` (based on `{self.trigger_time.provided_when or "N/A"}`)', inline=False)
+            emb.add_field(name='Amount of time left', value=f'`{time_left}`', inline=False)
             emb.add_field(name='Requested At', value=f'`{created_dt.ctime()}`', inline=False)
 
             emb.add_field(name='Reminder Content', value=emb_content, inline=False)
@@ -89,11 +124,10 @@ class Reminder(RedisEntry):
 
             return emb
 
-        out_lines = [f'Reminder for {member_str} at `{trigger_dt.ctime()}`:']
-
+        out_lines = [f'{out_prefix} for {member_str} at `{trigger_dt.ctime()}`:']
         out_lines += [f'> Requested At: `{created_dt.ctime()}`',
                       f'> Requested "when": `{self.trigger_time.provided_when or "Unknown"}`',
-                      f'> Amount of time left: `{humanize.naturaltime(self.trigger_time.num_seconds_left)}`',
+                      f'> Amount of time left: `{time_left}`',
                       f'> Created In: {channel_str}',
                       emb_content]
 
