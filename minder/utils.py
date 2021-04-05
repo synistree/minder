@@ -17,6 +17,51 @@ from minder.errors import MinderError
 logger = logging.getLogger(__name__)
 
 
+def validate_timezone(target_tz: str, throw_error: bool = False) -> bool:
+    """
+    Attempt to validate if the provided ``target_tz``
+
+    Use this method to check if any provided timezone string value is in fact valid
+
+    :param taret_tz: a timezone string such as ``America/Los_Angeles``
+    """
+
+    try:
+        pytz.timezone(target_tz)
+        return True
+    except pytz.exceptions.UnknownTimeZoneError as ex:
+        err_message = f'Invalid target timezone requested: "{target_tz}"'
+        if throw_error:
+            raise MinderError(err_message) from ex
+
+        logger.warning(err_message)
+
+        return False
+    except pytz.exceptions.NonExistentTimeError as ex:
+        err_message = f'Non-existent target timezone requested: "{target_tz}"'
+        if throw_error:
+            raise MinderError(err_message) from ex
+
+        logger.warning(err_message)
+        return False
+    except Exception as ex:
+        err_message = f'Generic error parsing timezone "{target_tz}": {ex}'
+
+        if throw_error:
+            raise MinderError(err_message) from ex
+
+        logger.warning(err_message)
+        return False
+    else:
+        err_message = f'Generic fall-through parsing timezone "{target_tz}" without an exception.'
+
+        if throw_error:
+            raise MinderError(err_message)
+
+        logger.warning(err_message)
+        return False
+
+
 def format_datetime(source: datetime, target: Union[str, pytz.tzfile.DstTzInfo] = None, throw_error: bool = True) -> datetime:
     if not target:
         target = Config.USE_TIMEZONE or 'UTC'

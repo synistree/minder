@@ -1,0 +1,34 @@
+<nav class="navbar sticky-top navbar-expand-lg navbar-dark bg-dark">
+  <a class="navbar-brand" href="/">minder web UI</a>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarColor02" aria-controls="navbarColor02" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+  <div class="collapse navbar-collapse" id="navbarColor02">
+    <ul class="navbar-nav mr-auto">
+      <li class="divider-vertical-heavy"></li>
+      <li class="nav-item overview-link"><a class="nav-link" href="/overview">Overview</a></li>
+      {%- if current_user.is_authenticated %}
+      <li class="nav-item divider-vertical"></li>
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">JSON API</a>
+        <div class="dropdown-menu">
+          <a class="dropdown-item" href="/api/guilds">Guilds</a>
+        </div>
+      </li>
+      {%- endif %}
+    </ul>
+    <ul class="nav navbar-nav navbar-right">
+      <li class="divider-vertical"></li>
+      {%- if current_user.is_authenticated %}
+      <li class="nav-item settings-link"><a class="nav-link" href="/settings">Settings</a></li>
+      <li class="nav-item details-link"><a class="nav-link" href="/db">DB Manager</a></li>
+      <li class="divider-vertical"></li>
+      <li class="nav-item"><a class="nav-link" href="/logout"><span class="glyphicon glyphicon-log-out"></span> Logout</a></li>
+      {%- else %}
+      <li class="nav-item"><a class="nav-link" href="/login"><span class="glyphicon glyphicon-log-in"></span> Login</a></li>
+      {%- endif %}
+    </ul>
+  </div>
+</nav>
+
+{# vim: set ts=2 sw=2 smarttab autoindent expandtab ft=html: #}

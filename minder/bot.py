@@ -1,5 +1,6 @@
 import logging
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from discord.ext import commands
 from redisent.helpers import RedisentHelper
 from sqlalchemy.engine import Engine, create_engine
@@ -13,7 +14,9 @@ logger = logging.getLogger(__name__)
 class MinderBot(commands.Bot):
     redis_helper: RedisentHelper
     sa_engine: Engine
+    scheduler: AsyncIOScheduler
 
+    is_ready: bool = False
     init_done: bool = False
 
     def __init__(self, **kwargs) -> None:
@@ -31,14 +34,21 @@ class MinderBot(commands.Bot):
         from minder.db import Base
         Base.metadata.create_all(self.sa_engine)
 
-        self._sync_init()
+        self.scheduler = AsyncIOScheduler({'apscheduler.timezone': Config.USE_TIMEZONE})
+
+    @commands.Cog.listener()
+    async def on_ready(self) -> None:
+        self.is_ready = True
+        logger.info('Bot initialization complete.')
+
+        await self._sync_init()
         self.init_done = True
 
-    def _sync_init(self) -> None:
+    async def _sync_init(self) -> None:
         for cog in self.cogs.values():
             init_fn = getattr(cog, '_sync_init', None)
             if init_fn:
-                init_fn()
+                await init_fn()
 
         logger.info('Finished running sync_init on all cogs')
 

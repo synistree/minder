@@ -1,0 +1,27 @@
+.navbar .divider-vertical {
+    height: 20px;
+    margin-top: 10px;
+    border-right: 1px solid #515151;
+    border-left: 1px solid #242424;
+}
+
+.navbar .divider-vertical-heavy {
+    height: 30px;
+    margin-top: 8px;
+    border-right: 1px solid #515151;
+    border-left: 2px solid #232323;
+}
+
+@media (max-width: 767px) {
+    .navbar-collapse .nav > .divider-vertical {
+        display: none;
+    }
+}
+
+.card {
+    margin: 10px 0px;
+}
+
+table.dataTable tbody>tr.selected, table.dataTable tbody>tr>.selected {
+    background-color: #00d6553f !important;
+}

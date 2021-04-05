@@ -1,0 +1,50 @@
+{% extends 'base.j2' %}
+
+{% block app_content %}
+<div class="row">
+  <div class="col col-md-8">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Overview</h5>
+        <h6 class="card-subtitle mb-2 text-muted">Current Bot Status / Overview</h6>
+        <p class="card-text">Details on overview goes here</p>
+      </div><!-- /card-body -->
+    </div><!-- /card -->
+  </div><!-- /col -->
+</div><!-- /row -->
+
+<div class="row">
+  <div class="col col-md-6">
+    <div class="card text-center">
+      <div class="card-body">
+        <h5 class="card-title">JSON API Links</h5>
+        <h6 class="card-subtitle mb-2 text-muted">Links to the raw JSON API interfaces for models</h6>
+        <p class="card-text">Each of these links will return all elements for the associated type of database models being requested.</p>
+        <a class="btn btn-primary" data-toggle="collapse" href="#json-links" role="button" aria-expanded="false" aria-controls="json-links">Expand Links</a>
+      </div>
+      <ul id="json-links" class="list-group list-group-flush collapse">
+        <li class="list-group-item"><a class="card-link" href="/api/guilds">Guilds</a></li>
+      </ul>
+    </div><!-- /card -->
+  </div><!-- /col -->
+
+  <div class="col col-md-6">
+    <div class="card text-center">
+      <div class="card-body">
+        <h5 class="card-title">Management / Stats Links</h5>
+        <h6 class="card-subtitle mb-2 text-muted">Other links for displaying current status, statistics and other internals</h6>
+        <p class="card-text">The links here are helpful for inspecting the current state, working with lower-level debugging interfaces and more.</p>
+        <a class="btn btn-primary" data-toggle="collapse" href="#management-links" role="button" aria-expanded="false" aria-controls="management-links">Expand Links</a>
+      </div><!-- /card-body -->
+      <ul id="management-links" class="list-group list-group-flush collapse">
+        <li class="list-group-item"><a class="card-link" href="/overview" >App Overview</a></li>
+        <li class="list-group-item"><a class="card-link" href="/settings">Settings</a></li>
+        <li class="list-group-item"><a class="card-link" href="/db" >DB Manager</a></li>
+      </ul>
+    </div><!-- /card -->
+  </div><!-- /col -->
+
+</div><!-- /row -->
+{% endblock %}
+
+{# vim: set ts=2 sw=2 smarttab autoindent expandtab ft=html: #}

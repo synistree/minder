@@ -1,0 +1,62 @@
+{# Jinja Macros for use within templates #}
+{%- macro build_table(headers, addt_styles=[], html_id=None, full_width=True) %}
+{%- set id_attr = '' if not html_id else ' id="' + html_id + '"' %}
+{%- set classes = ['table', 'table-bordered', 'hover', 'responsive'] + addt_styles %}
+{%- set style_attr = ' style="width:100%"' if full_width else '' %}
+<table{{ id_attr }} class="{{ ' '.join(classes) }}"{{ style_attr }}>
+  <thead>
+    <tr>
+      {%- for name, title in headers.items() %}
+      <th data-data="{{ name }}">{{ title }}</th>
+      {%- endfor %}
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+{% endmacro %}
+
+{# Builder for Bootstrap cards #}
+{%- macro build_card(card_id=None, title_id=None, text_id=None, title_content=None, card_content=None) %}
+{%- set card_id_attr = ' id="{{ card_id }}"' if card_id else '' %}
+{%- set card_title_attr = ' id="{{ title_id }}"' if title_id else '' %}
+{%- set text_id_attr = ' id="{{ text_id }}' if text_id else '' %}
+<div class="card"{{ card_id_attr }}>
+  <div class="card-body">
+    <h5 class="card-title"{{ card_title_attr }}>{{ title_content or '' }}</h5>
+    <p class="card-text"{{ text_id_attr }}>{{ card_content }}</p>
+  </div><!-- /card-body -->
+</div><!-- /card -->
+{%- endmacro %}
+
+
+{# Builder for Bootstrap modals #}
+{%- macro build_modal(modal_id, title_id, body_id, is_hidden=True, has_close=True, buttons=[]) %}
+{%- set hidden_attr = ' aria-hidden="true"' if is_hidden else '' %}
+<div class="modal fade" id="{{ modal_id }}" role="dialog"{{ hidden_attr }} tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title" id="{{ title_id }}"></h4>
+        {%- if has_close %}
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
+          <span aria-hidden="true">&times;</span>
+        </button>
+        {%- endif %}
+      </div><!-- /modal-header -->
+      <div class="modal-body"><h5 id="{{ body_id }}"></h5></div>
+      <div class="modal-footer">
+        {%- for btn in buttons %}
+        {%- set btn_attr = ' data-dismiss="modal"' if btn.get('dismiss', False) else '' %}
+        {%- set btn_classes = ' '.join(['btn'] + btn.get('classes', [])) %}
+        <button type="button" class="{{ btn_classes }}"{{ btn_attr }}>{{ btn["text"] }}</button>
+        {%- endfor %}
+        {%- if has_close %}
+        <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+        {%- endif %}
+      </div><!-- /modal-footer -->
+    </div><!-- /modal-content -->
+  </div><!-- /modal-dialog -->
+</div><!-- /modal -->
+{%- endmacro %}
+
+{# vim: set ts=2 sw=2 smarttab autoindent expandtab ft=jinja: #}

@@ -2,24 +2,46 @@ import logging
 import os
 import os.path
 
-from typing import TYPE_CHECKING
+from logging.config import dictConfig
 
-__version__ = '0.9.0'
+__version__ = '0.10.1'
 
-LOG_LEVEL = logging.DEBUG
+DEFAULT_LOG_LEVEL = os.environ.get('LOG_LEVEL', logging.INFO)
+LOG_LEVEL = logging.DEBUG if os.environ.get('DEBUG', False) else logging.INFO
+
+cfmt_timestamp = '%(green)s%(asctime)s %(cyan)s%(levelname)s%(reset)s'
+cfmt_module = '%(red)s%(name)s%(reset)s::%(blue)s%(module)s%(reset)s'
+cfmt_func = '%(green)s%(funcName)s%(reset)s(%(cyan)s%(args)s%(reset)s'
+color_fmt = f'[{cfmt_timestamp}] [{cfmt_module}]: %(message)s'
+
+dictConfig({
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'colored': {
+            '()': 'colorlog.ColoredFormatter',
+            'format': color_fmt,
+            'datefmt': "%H:%M:%S"
+        }
+    },
+    'handlers': {
+       'stream': {
+           'class': 'logging.StreamHandler',
+           'formatter': 'colored'
+        }
+    },
+    'loggers': {
+        'minder': {
+            'level': LOG_LEVEL
+        },
+        'discord': {
+            'level': logging.INFO if os.environ.get('DEBUG', False) else logging.WARNING
+        },
+        '': {
+            'handlers': ['stream'],
+            'level': DEFAULT_LOG_LEVEL
+        }
+    }
+})
 
 app_logger = logging.getLogger(__name__)
-log_ch = logging.StreamHandler()
-
-
-def setup_logger(log_level: int = logging.DEBUG, squelch: bool = False):
-    log_fmt = logging.Formatter('[discoweb - %(levelname)s] %(asctime)s in %(module)s: %(message)s')
-    log_ch.setFormatter(log_fmt)
-    app_logger.setLevel(log_level)
-
-    if not squelch:
-        app_logger.addHandler(log_ch)
-        app_logger.debug('Logging started for discoweb.')
-
-
-setup_logger(log_level=LOG_LEVEL, squelch=TYPE_CHECKING)

@@ -7,3 +7,17 @@ humanize
 IPython
 redisent
 SQLAlchemy
+colorlog
+colorama
+
+#web
+flask
+flask-Login
+flask-SQLAlchemy
+flask-Bootstrap
+flask-Moment
+flask-Pretty
+flask-WTF
+WTForms-Alchemy
+WTForms
+Werkzeug

@@ -1,0 +1,10 @@
+{% extends 'base.j2' %}
+
+{% block app_content %}
+    <h1>Successfully logged in!</h1>
+    <ul>
+        <li>Click to return <a href="{{ url_for('app.overview') }}">Overview</a> now</li>
+    </ul>
+{% endblock %}
+
+{# vim: set ts=2 sw=2 smarttab autoindent expandtab ft=html: #}

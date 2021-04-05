@@ -6,8 +6,9 @@ import humanize
 from dataclasses import dataclass, field
 from datetime import datetime
 from redisent.models import RedisEntry
-from typing import Union, Optional
+from typing import Union, Optional, Mapping, Any
 
+from minder.errors import MinderError
 from minder.utils import FuzzyTime
 
 
@@ -24,7 +25,7 @@ class UserSettings(RedisEntry):
     def __post_init__(self) -> None:
         self.redis_name = f'{self.guild_id}:{self.member_id}'
 
-    def get_value(self, setting_name: str) -> Optional[str]:
+    def get_value(self, setting_name: str, throw_error: bool = True) -> Optional[str]:
         if setting_name in self.settings:
             return self.settings[setting_name]
 
@@ -52,6 +53,7 @@ class Reminder(RedisEntry):
     trigger_ts: float = field(default_factory=float)
     created_ts: float = field(default_factory=float)
 
+    user_notified: bool = field(default=False, compare=False)
     is_complete: bool = field(default=False, compare=False)
     trigger_time: FuzzyTime = field(init=False)
 
