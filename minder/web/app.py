@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from minder.cli import register_app_cli
 from minder.config import Config
 from minder.web.model import db
 
-from flask import Flask
+from flask import Flask, redirect, url_for
 from flask_bootstrap import Bootstrap, WebCDN
 from flask_login import LoginManager
 from flask_moment import Moment
 from flask_pretty import Prettify
+
+from redisent.helpers import RedisentHelper
 
 from werkzeug.exceptions import Unauthorized
 
@@ -20,6 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 class FlaskApp(Flask):
+    redis_helper: RedisentHelper
+
     def __init__(self, import_name: str, *args, hostname: str = None, port: str = None, use_reloader: bool = None, **kwargs) -> None:
         # Enforce setting "instance_relative_config" to True when setting up the Flask application
         kwargs['instance_relative_config'] = True
@@ -40,7 +43,6 @@ class FlaskApp(Flask):
 
         # Setup Flask plugins
         db.init_app(self)
-    
         Prettify(self)
         Bootstrap(self)
         moment.init_app(self)
@@ -66,7 +68,10 @@ class FlaskApp(Flask):
 
         # Register the Click CLI extensions from "minder.cli"
         register_app_cli(self)
-        
+
+        # Setup RedisentHelper
+        pool = RedisentHelper.build_pool(Config.REDIS_URL)
+        self.redis_helper = RedisentHelper(pool)
         # Finally, setup SQLAlchemy
         self.logger.info('Initalizing database tables..')
 

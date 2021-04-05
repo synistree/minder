@@ -7,7 +7,6 @@ from discord.ext import commands
 from typing import List
 
 from minder.cogs.base import BaseCog
-from minder.config import Config
 from minder.models import Reminder
 from minder.utils import FuzzyTimeConverter
 
@@ -16,60 +15,60 @@ logger = logging.getLogger(__name__)
 
 class ReminderCog(BaseCog):
     async def _sync_init(self) -> None:
-        self.bot.scheduler.add_job(self._process_reminders, trigger='interval', seconds=int(Config.DEFAULT_CHECK_INTERVAL))
+        logger.info('Starting scheduler in Reminder cog and processing and pending Reminders')
 
-        # Call immediately.
+        self.bot.scheduler.start()
         await self._process_reminders()
 
-        logger.info('Reminder cog scheduled job registered. Starting scheduler..')
-        self.bot.scheduler.start()
-
     async def _process_reminders(self) -> None:
-        logger.info('In scheduled reminder check.')
-
-        reminders = self._get_reminders()
+        reminders = self._get_reminders(include_complete=False)
 
         if not reminders:
             return
 
+        dt_now = datetime.now()
+
+        logger.info(f'Found #{len(reminders)} pending reminders to schedule..')
+
         for rem in reminders:
-            if rem.is_complete:
+            num_seconds_left = rem.trigger_time.num_seconds_left
+
+            if not num_seconds_left:
+                logger.warning(f'Found reminder that appeared to be pending with num_seconds_left not set for "{rem.redis_name}". Skipping..')
                 continue
 
-            dt_now = datetime.now()
-            t_delta = dt_now - rem.trigger_dt
-            t_offset = 14400  # 4 hours
-            # 10 * int(Config.DEFAULT_CHECK_INTERVAL)
-            if t_delta.total_seconds() > t_offset:
-                nice_total = humanize.naturaltime(t_delta.total_seconds(), future=False)
-                logger.info(f'Found reminder that has been elapsed for {nice_total} with t_offset set {t_offset}. Skipping.')
-                continue
+            nice_seconds = humanize.naturaltime(num_seconds_left, future=True)
+            logger.info(f'Scheduling reminder job for "{rem.redis_name}" in {num_seconds_left} seconds ({nice_seconds})')
+            self.bot.scheduler.add_job(self._process_reminder, kwargs={'reminder': rem, 'added_at': dt_now}, trigger='date', run_date=rem.trigger_dt,
+                                       id=rem.redis_name)
 
-            author, channel = None, None
+    async def _process_reminder(self, reminder: Reminder, added_at: datetime = None) -> None:
+        added_at = added_at or datetime.now()
+        author, channel = None, None
 
-            channel = await self.bot.fetch_channel(rem.channel_id) if rem.channel_id else None
+        channel = await self.bot.fetch_channel(reminder.channel_id) if reminder.channel_id else None
+        author = await self.bot.fetch_user(reminder.member_id)
 
-            author = await self.bot.fetch_user(rem.member_id)
+        if not channel:
+            logger.info(f'Reminder has no associated channel, DMing "{author.name}" instead')
 
-            if not channel:
-                logger.info(f'Reminder has no associated channel, DMing "{author.name}" instead')
+        msg_target = channel if channel else author
+        msg_out = f':wave: {author.mention if channel else author.name}, here is your reminder:\n{reminder.as_markdown(author, channel=channel)}'
+        logger.info(f'Triggered reminder response for "{msg_target}":\n{reminder.dump()}')
 
-            msg_target = channel if channel else author
-            msg_out = f':wave: {author.mention if channel else author.name}, here is your reminder:\n{rem.as_markdown(author, channel=channel)}'
-            logger.info(f'Triggered reminder response for "{msg_target}":\n{rem.dump()}')
-            
-            try:
-                await msg_target.send(msg_out)
-            except Exception as ex:
-                logger.error(f'Error sending reminder to "{msg_target}": {ex}')
-                logger.debug(f'Dumped reminder:\n{rem.dump()}')
-                continue
-            else:
-                rem.is_complete = True
-                rem.store(self.bot.redis_helper)
-                logger.info(f'Successfully marked reminder for "{rem.member_name}" complete')
+        try:
+            await msg_target.send(msg_out)
+        except Exception as ex:
+            logger.error(f'Error sending reminder to "{msg_target}": {ex}')
+            logger.debug(f'Dumped reminder:\n{reminder.dump()}')
+            return False
+        else:
+            reminder.user_notified = True
+            reminder.store(self.bot.redis_helper)
+            logger.info(f'Successfully marked reminder for "{reminder.member_name}" complete')
 
         logger.info('Finished scheduled reminder check.')
+        return True
 
     def _get_reminders(self, member_id: int = None, include_complete: bool = True) -> List[Reminder]:
         rem_keys = self.bot.redis_helper.keys(redis_id='reminders')
@@ -99,7 +98,7 @@ class ReminderCog(BaseCog):
         if not self.bot.init_done:
             await ctx.send(f'Sorry {ctx.author.mention}, bot is not done loading yet..')
             return
-        
+
         if ctx.invoked_subcommand:
             return
 
@@ -125,12 +124,17 @@ class ReminderCog(BaseCog):
     @commands.guild_only()
     @reminders.command(name='add')
     async def add_reminder(self, ctx: commands.Context, fuzzy_when: FuzzyTimeConverter, *, content: str) -> None:
+        dt_now = datetime.now()
         reminder = Reminder.build(fuzzy_when, ctx.author, ctx.channel, content)
 
         reminder.store(self.bot.redis_helper)
         reminder_md = reminder.as_markdown(ctx.author, ctx.channel, as_embed=True)
         logger.info(f'Successfully added new reminder for "{ctx.author.name}"')
         logger.debug(f'Reminder:\n{reminder.dump()}')
+
+        self.bot.scheduler.add_job(self._process_reminder, kwargs={'reminder': reminder, 'added_at': dt_now}, trigger='date',
+                                   run_date=reminder.trigger_dt, id=reminder.redis_name)
+        logger.info(f'Scheduled new reminder job at "{reminder.trigger_dt.ctime()}"')
 
         await ctx.send(f'Adding new reminder for {ctx.author.mention}', embed=reminder_md)
 
@@ -153,12 +157,18 @@ class ReminderCog(BaseCog):
 
         for rem in reminders:
             try:
-                if not rem.is_complete:
+                if not for_member and not rem.is_complete:
+                    logger.info(f'Skipping pending reminder for "{rem.redis_name}" since no member was passed to "reminders clean" command')
                     continue
 
                 logger.debug(f'Running hdel() on "{rem.redis_name}" for "{rem.member_name}"')
                 with self.bot.redis_helper.wrapped_redis(f'hdel("reminders", "{rem.redis_name}")') as r_conn:
                     r_conn.hdel('reminders', rem.redis_name)
+
+                sched_job = self.bot.scheduler.get_job(rem.redis_name)
+                if sched_job:
+                    logger.info(f'Removing scheduled job for reminder "{rem.redis_name}" at "{rem.trigger_dt.ctime()}"')
+                    sched_job.remove()
 
                 cnt += 1
             except Exception as ex:
