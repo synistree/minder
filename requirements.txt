@@ -5,10 +5,12 @@ discord.py
 python-dotenv
 humanize
 IPython
-redisent
 SQLAlchemy
 colorlog
 colorama
+
+#redisent master release
+git+git://github.com/synistree/redisent.git#egg=redisent
 
 #web
 flask

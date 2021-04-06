@@ -1,16 +1,24 @@
 import os.path
 import setuptools
 
+
+install_reqs = []
 req_path = os.path.join(os.path.dirname(__file__), 'requirements.txt')
+
 with open(req_path, 'rt') as f:
-    install_reqs = [req.rstrip('\n') for req in f.readlines()]
+    for req in f.readlines():
+        req = req.rstrip('\n')
+        if req.startswith('#') or '-e ' in req:
+            # Skip commented out lines and anything with "-e" in the name
+            continue
+
+    install_reqs.append(req)
 
 
 setuptools.setup(
     name='minder',
-    packages=setuptools.find_packages(where='.'),
+    packages=setuptools.find_namespace_packages(where='.'),
     url='https://github.com/jhannah01/minder',
-    license='',
     author='Jon Hannah',
     author_email='jon@synistree.com',
     description='Simple discord.py bot for helping with remembering things',
