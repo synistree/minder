@@ -100,7 +100,7 @@ def get_working_path(use_working_path: str = None) -> str:
 class FuzzyTime:
     provided_when: str = field()
 
-    created_time: datetime = field()
+    created_time: datetime = field(default_factory=datetime.now)
     resolved_time: datetime = field(init=False)
 
     @property

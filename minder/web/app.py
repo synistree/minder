@@ -12,7 +12,10 @@ from flask_login import LoginManager
 from flask_moment import Moment
 from flask_pretty import Prettify
 
+from redisent.types import RedisType
 from redisent.helpers import RedisentHelper
+
+from typing import Any, Mapping
 
 from werkzeug.exceptions import Unauthorized
 
@@ -23,7 +26,9 @@ logger = logging.getLogger(__name__)
 class FlaskApp(Flask):
     redis_helper: RedisentHelper
 
-    def __init__(self, import_name: str, *args, hostname: str = None, port: str = None, use_reloader: bool = None, **kwargs) -> None:
+    def __init__(self, import_name: str, *args, hostname: str = None, port: str = None, use_reloader: bool = None,
+                 overrides: Mapping[str, Any] = None, use_redis: RedisType = None, **kwargs) -> None:
+        overrides = overrides or {}
         # Enforce setting "instance_relative_config" to True when setting up the Flask application
         kwargs['instance_relative_config'] = True
 
@@ -40,6 +45,10 @@ class FlaskApp(Flask):
         self.config.from_object('minder.config.Config')
 
         self.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+        if overrides:
+            for o_key, o_val in overrides.items():
+                self.config[o_key] = o_val
 
         # Setup Flask plugins
         db.init_app(self)
@@ -71,7 +80,11 @@ class FlaskApp(Flask):
 
         # Setup RedisentHelper
         pool = RedisentHelper.build_pool(Config.REDIS_URL)
-        self.redis_helper = RedisentHelper(pool)
+        if use_redis:
+            logger.info(f'Using provided Redis instance: {use_redis}')
+
+        self.redis_helper = RedisentHelper(pool, use_redis=use_redis)
+
         # Finally, setup SQLAlchemy
         self.logger.info('Initalizing database tables..')
 
@@ -98,6 +111,6 @@ class FlaskApp(Flask):
         super().run(*args, **kwargs)
 
 
-def create_app(hostname: str = None, port: str = None, use_reloader: bool = None) -> FlaskApp:
-    app = FlaskApp(__name__, hostname=hostname, port=port, use_reloader=use_reloader)
+def create_app(hostname: str = None, port: str = None, use_reloader: bool = None, overrides: Mapping[str, Any] = None, use_redis: RedisType = None) -> FlaskApp:
+    app = FlaskApp(__name__, hostname=hostname, port=port, use_reloader=use_reloader, overrides=overrides, use_redis=use_redis)
     return app

@@ -1,0 +1,14 @@
+# Testing
+pytest
+pytest-mock
+pytest-cov
+pytest-mypy
+pytest-flake8
+pytest-flask
+pytest-pep8
+mock
+mypy
+coverage
+tox
+pytest-flask-sqlalchemy
+redislite

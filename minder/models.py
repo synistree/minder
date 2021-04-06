@@ -56,6 +56,8 @@ class Reminder(RedisEntry):
     user_notified: bool = field(default=False, compare=False)
     trigger_time: FuzzyTime = field(init=False)
 
+    from_dm: Optional[bool] = field(default=None)
+
     @property
     def trigger_dt(self) -> datetime:
         """
@@ -82,10 +84,34 @@ class Reminder(RedisEntry):
         self.redis_name = f'{self.member_id}:{self.trigger_ts}'
         self.trigger_time = FuzzyTime.build(self.provided_when, created_ts=self.created_ts)
 
+        if self.from_dm is None:
+            self.from_dm = True if not self.channel_id or not self.channel_name else False
+
     @classmethod
-    def build(cls, trigger_time: FuzzyTime, member: discord.Member, channel: discord.TextChannel, content: str) -> Reminder:
-        return Reminder(created_ts=trigger_time.created_timestamp, trigger_ts=trigger_time.resolved_timestamp, member_id=member.id, member_name=member.name,
-                        channel_id=channel.id, channel_name=channel.name, provided_when=trigger_time.provided_when, content=content)
+    def build(cls, trigger_time: Union[FuzzyTime, str], member: discord.Member, content: str, channel: Union[discord.TextChannel, discord.DMChannel] = None,
+              created_at: datetime = None) -> Reminder:
+        channel_id, channel_name = None, None
+        from_dm = False
+
+        if channel:
+            channel_id = channel.id
+
+            if isinstance(channel, discord.DMChannel):
+                channel_name = f'DM {member.name}'
+                from_dm = True
+            else:
+                channel_name = channel.name
+
+        if not isinstance(trigger_time, FuzzyTime):
+            trigger_time = FuzzyTime.build(provided_when=trigger_time, created_ts=created_at)
+
+        created_ts = trigger_time.created_timestamp
+        trigger_ts = trigger_time.resolved_timestamp
+        provided_when = trigger_time.provided_when
+
+        return Reminder(created_ts=created_ts, trigger_ts=trigger_ts, member_id=member.id, member_name=member.name,
+                        channel_id=channel_id, channel_name=channel_name, provided_when=provided_when, content=content,
+                        from_dm=from_dm)
 
     def as_markdown(self, author: discord.Member = None, channel: discord.TextChannel = None,
                     as_embed: Union[discord.Embed, bool] = False) -> Union[discord.Embed, str]:
