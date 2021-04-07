@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class SettingsCog(BaseCog):
-    @commands.guild_only()
+    @commands.dm_only()
     @commands.group(name='settings')
     async def settings(self, ctx: commands.Context) -> None:
         if ctx.invoked_subcommand:

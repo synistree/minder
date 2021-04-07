@@ -49,15 +49,19 @@ class ErrorHandlerCog(commands.Cog):
         else:
             exc_info = traceback.format_exc(chain=True)
 
-        logger.debug(f'Traceback:\n{"".join(exc_info)}')
+        logger.info(f'Traceback:\n{"".join(exc_info)}')
 
         if isinstance(error, commands.DisabledCommand):
             await ctx.send(f'Sorry {ctx.author.mention} but `{ctx.command}` has been disabled.')
         elif isinstance(error, commands.NoPrivateMessage):
+            logger.error(f'Received guild-only command {ctx.command} from {ctx.author.name}')
             try:
                 await ctx.author.send(f'Eek.. `{ctx.command}` can not be used in Private Messages.')
             except discord.HTTPException:
                 pass
+        elif isinstance(error, commands.errors.PrivateMessageOnly):
+            logger.error(f'Received dm-only command for {ctx.command} in {ctx.channel.name} from {ctx.author.name}')
+            await ctx.send(f'Sorry {ctx.author.mention}, {ctx.command} can only be used in DMs')
         elif isinstance(error, commands.BadArgument):
             if ctx.command.qualified_name == 'tag list':
                 await ctx.send(f'Sorry {ctx.author.mention}, bad argument value for `{ctx.command}`: {error}')
@@ -68,4 +72,4 @@ class ErrorHandlerCog(commands.Cog):
             if error.is_connection_error:
                 await ctx.send(f'Sorry {ctx.author.mention}, unable to connect to the backend')
         else:
-            logger.warning(f'[default on_command_error:{ctx.command}] Silently ignoring error and not reporting')
+            logger.warning(f'[default on_command_error:{ctx.command}] Silently ignoring error {error} and not reporting')

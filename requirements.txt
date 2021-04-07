@@ -5,6 +5,7 @@ discord.py
 python-dotenv
 humanize
 IPython
+pyYAML
 SQLAlchemy
 colorlog
 colorama

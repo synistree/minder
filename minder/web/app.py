@@ -112,5 +112,7 @@ class FlaskApp(Flask):
 
 
 def create_app(hostname: str = None, port: str = None, use_reloader: bool = None, overrides: Mapping[str, Any] = None, use_redis: RedisType = None) -> FlaskApp:
+    hostname = hostname or Config.FLASK_HOST
+    port = port or str(Config.FLASK_PORT)
     app = FlaskApp(__name__, hostname=hostname, port=port, use_reloader=use_reloader, overrides=overrides, use_redis=use_redis)
     return app

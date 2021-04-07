@@ -4,11 +4,11 @@ import humanize
 
 from datetime import datetime
 from discord.ext import commands
-from typing import List
+from typing import List, Optional
 
 from minder.cogs.base import BaseCog
 from minder.models import Reminder
-from minder.utils import FuzzyTimeConverter
+from minder.utils import FuzzyTimeConverter, Timezone, FuzzyTime
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +125,7 @@ class ReminderCog(BaseCog):
     @reminders.command(name='add')
     async def add_reminder(self, ctx: commands.Context, fuzzy_when: FuzzyTimeConverter, *, content: str) -> None:
         dt_now = datetime.now()
-        reminder = Reminder.build(fuzzy_when, ctx.author, ctx.channel, content)
+        reminder = Reminder.build(fuzzy_when, member=ctx.author, channel=ctx.channel, content=content)
 
         reminder.store(self.bot.redis_helper)
         reminder_md = reminder.as_markdown(ctx.author, ctx.channel, as_embed=True)
@@ -177,6 +177,22 @@ class ReminderCog(BaseCog):
                 continue
 
         await ctx.send(f'{msg_out}... Removed #{cnt}. :smile:')
+
+    @commands.command(name='when')
+    async def when(self, ctx: commands.Context, when: FuzzyTimeConverter, *, use_tz: Optional[str] = None):
+        logger.info(f'cmd: when. when -> "{when}", use_tz: "{use_tz}"')
+
+        if use_tz:
+            timezone = Timezone.build(use_tz, throw_error=False)
+            if not timezone:
+                await ctx.send(f'Sorry {ctx.author.mention}, "{use_tz}" does not appear to be a valid timezone')
+                return
+
+            fuz_time = FuzzyTime.build(provided_when=when.provided_when, created_time=datetime.now(timezone.timezone), use_timezone=timezone)
+        else:
+            fuz_time = when
+
+        await ctx.send(f'Resolved `{when}` -> ```\n{fuz_time} (`{fuz_time.resolved_time}`)\n```\n> use_tz: `{use_tz}`')
 
     @commands.guild_only()
     @reminders.command(name='lookup')

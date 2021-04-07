@@ -7,6 +7,7 @@ from sqlalchemy.engine import Engine, create_engine
 
 from minder.config import Config
 from minder.cogs.base import BaseCog
+from minder.cogs.errors import ErrorHandlerCog
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,7 @@ class MinderBot(commands.Bot):
 def build_bot(use_token: str = None, start_bot: bool = True, **bot_kwargs) -> MinderBot:
     bot = MinderBot(**bot_kwargs)
     bot.add_cog(BaseCog(bot))
+    bot.add_cog(ErrorHandlerCog(bot))
 
     for cog_cls in BaseCog._subclasses:
         logger.info(f'Registering cog "{cog_cls.__name__}"')
