@@ -1,16 +1,74 @@
+from __future__ import annotations
+
 import discord
 import logging
 import humanize
 
 from datetime import datetime
-from discord.ext import commands
-from typing import List, Optional
+from discord.ext import commands, menus
+from discord_slash import cog_ext, SlashContext
+from emoji import EMOJI_ALIAS_UNICODE as EMOJIS
+from typing import List, Optional, Sequence, Any
 
 from minder.cogs.base import BaseCog
+from minder.errors import MinderError
 from minder.models import Reminder
-from minder.utils import FuzzyTimeConverter, Timezone, FuzzyTime
+from minder.utils import FuzzyTimeConverter, Timezone, FuzzyTime, build_stacktrace_embed
 
 logger = logging.getLogger(__name__)
+
+
+class ReminderMenuSource(menus.ListPageSource):
+    def __init__(self, entries: Sequence[Any], per_page: int = None) -> None:
+        per_page = per_page or 2
+        super().__init__(entries, per_page=per_page)
+
+    async def format_page(self, menu: ReminderMenu, entries: List[Reminder]) -> str:
+        offset = menu.current_page * self.per_page
+        if offset + 1 > len(entries):
+            raise MinderError(f'Unable to enumerate reminder menu for page "{menu.current_page}" with only {len(entries)} entries')
+
+        return entries[offset].as_markdown(author=menu.ctx.author, channel=menu.ctx.channel)
+
+
+class ReminderMenu(menus.Menu):
+    reminder: Reminder
+    header: str
+
+    result: bool = None
+
+    def __init__(self, reminder: Reminder, *args, header: str = None, timeout: float = None, **kwargs) -> None:
+        kwargs['timeout'] = timeout or 30.0
+        kwargs['clear_reactions_after'] = True
+        super().__init__(*args, **kwargs)
+
+        self.reminder = reminder
+        self.header = header or 'Keep or purge this reminder?'
+
+    async def send_initial_message(self, ctx: commands.Context, channel: discord.abc.Messageable) -> None:
+        return await channel.send(self.header, embed=self.reminder.as_markdown(author=ctx.author, channel=channel, as_embed=True))
+
+    @menus.button(EMOJIS[':white_check_mark:'])
+    async def on_keep(self, payload) -> None:
+        logger.info(f'Received keep confirmation on {payload}')
+        self.result = True
+
+        await self.message.edit(content=f'Thanks {self.ctx.author.mention}, will keep this reminder.', delete_after=self.timeout)
+
+        self.stop()
+
+    @menus.button(EMOJIS[':heavy_multiplication_x:'])
+    async def on_remove(self, payload) -> None:
+        logger.info(f'Received removal confirmation on {payload}')
+        self.result = False
+
+        await self.message.edit(content=f'Sounds good {self.ctx.author.mention}, removing this reminder.', delete_after=self.timeout)
+
+        self.stop()
+
+    async def prompt(self, ctx: commands.Context, channel: discord.abc.Messageable = None) -> bool:
+        await self.start(ctx, channel=channel, wait=True)
+        return self.result
 
 
 class ReminderCog(BaseCog):
@@ -92,6 +150,39 @@ class ReminderCog(BaseCog):
 
         return reminders
 
+    @cog_ext.cog_subcommand(base='reminders', name='list', description='List all or pending reminders')
+    async def _reminders_list(self, ctx: SlashContext, include_complete: bool = False) -> None:
+        if not self.bot.init_done:
+            await ctx.send('Sorry, the bot is not yet loaded.. Try again in a few moments')
+            return
+
+        reminders = self._get_reminders(include_complete=include_complete)
+        all_rem = '**ALL** reminders' if not include_complete else 'pending reminders'
+        msg_out = f'Found #{len(reminders)} {all_rem}:'
+        for rem in reminders:
+            msg_out += f'\n{rem.as_markdown(ctx.author, ctx.channel)}'
+
+        await ctx.send(msg_out)
+
+    @cog_ext.cog_subcommand(base='reminders', name='add', description='Add a new reminder')
+    async def _reminders_add(self, ctx: SlashContext, when: str, content: str) -> None:
+        if not self.bot.init_done:
+            await ctx.send('Sorry, the bot is not yet loaded.. Try again in a few moments')
+            return
+
+        fuzzy_when = FuzzyTime.build(provided_when=when)
+        await ctx.send(f'Would add new reminder for `{fuzzy_when.resolved_time}` with ```\n{content}\n``` based on "{when}"')
+
+    @cog_ext.cog_subcommand(base='reminders', name='clean', description='Purge completed or all reminders')
+    async def _reminders_clean(self, ctx: SlashContext, complete_only: bool = True, member: discord.Member = None):
+        action = 'ALL' if not complete_only else 'pending'
+        await ctx.send(f'Would purge `{action}` reminders. member: {member}')
+
+    @commands.Cog.listener()
+    async def on_slash_command_error(self, ctx: SlashContext, ex: Exception) -> None:
+        logger.error(f'Error running slash command for "{ctx.command}" for "{ctx.author.name}": {ex}')
+        await ctx.send(f'Error running "{ctx.command}": {ex} :frowning:', embeds=[build_stacktrace_embed(ex)])
+
     @commands.guild_only()
     @commands.group(name='reminders')
     async def reminders(self, ctx: commands.Context) -> None:
@@ -120,6 +211,22 @@ class ReminderCog(BaseCog):
             msg_out += f'\n{rem.as_markdown(ctx.author, ctx.channel)}'
 
         await ctx.send(msg_out)
+
+    @commands.guild_only()
+    @reminders.command(name='review')
+    async def review_reminders(self, ctx: commands.Context, member: discord.Member = None) -> None:
+        reminders = self._get_reminders(include_complete=False)
+
+        if member:
+            reminders = [rem for rem in reminders if rem.member_id == member.id]
+
+        for rem in reminders:
+            menu = ReminderMenu(rem)
+            res = await menu.prompt(ctx)
+            logger.info(f'Reminder review response: {res}')
+
+        # pages = menus.MenuPages(source=ReminderMenuSource(reminders))
+        # await pages.start(ctx)
 
     @commands.guild_only()
     @reminders.command(name='add')

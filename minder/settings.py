@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 
+from redisent.helpers import RedisentHelper
 from typing import Any, List, Mapping, Optional
 
 from minder.errors import MinderError
@@ -11,6 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 class SettingsHandler:
+    manager: SettingsManager
+
+    def __init__(self, manager: SettingsManager) -> None:
+        self.manager = manager
+
     @classmethod
     def get_handled_settings(cls) -> List[str]:
         """
@@ -36,6 +42,10 @@ class SettingsHandler:
     @property
     def handled_settings(self) -> List[str]:
         return self.get_handled_settings()
+
+    @property
+    def redis_helper(self) -> RedisentHelper:
+        return self.manager.redis_helper
 
     def can_handle_setting(self, name: str) -> bool:
         """
@@ -80,22 +90,53 @@ class TimezoneSetting(SettingsHandler):
         return 'Timezone'
 
     def process_setting(self, name: str, value: str) -> Timezone:
-        if name != 'timezone':
+        if name not in self.handled_settings:
             raise MinderError(f'Unable to process setting for "{name}" (not supported)')
 
         return Timezone.build(value)
 
 
+class AdminSetting(SettingsHandler):
+    @classmethod
+    def get_handled_settings(self) -> List[str]:
+        return ['admin_channels', 'admins']
+
+    @classmethod
+    def get_handler_name(self) -> str:
+        return 'Admin'
+
+    def process_setting(self, name: str, value):
+        if name not in self.handled_settings:
+            raise MinderError(f'Unable to process setting for "{name}" (not supported)')
+
+        return self.redis_helper.get('settings', redis_name=name)
+
+
 class SettingsManager:
+    redis_helper: RedisentHelper
     handlers: Mapping[str, SettingsHandler]
     loaded_settings: Mapping[str, Any]
 
-    def __init__(self) -> None:
+    def get_all_settings(self) -> Mapping[str, List[str]]:
+        """
+        Build a mapping of all supported handlers and settings
+        """
+
+        all_ents = {}
+
+        for h_name, handler in self.handlers.items():
+            for c_setting in handler.handled_settings:
+                all_ents[c_setting] = handler
+
+        return all_ents
+
+    def __init__(self, redis_helper: RedisentHelper) -> None:
+        self.redis_helper = redis_helper
         self.handlers = {}
         self.loaded_settings = {}
 
         for cls in SettingsHandler.__subclasses__():
-            cur_cls = cls()
+            cur_cls = cls(self)
             for name in cur_cls.handled_settings:
                 if name in self.handlers:
                     found_handler = self.handlers[name].handler_name
@@ -121,14 +162,31 @@ class SettingsManager:
 
         return not any_failed
 
-    def get_setting(self, name: str, throw_error: bool = True) -> Optional[Any]:
-        if name in self.loaded_settings:
-            return self.loaded_settings[name]
+    def get_settings(self, handler_name: str, setting_name: str = None, throw_error: bool = True) -> Optional[Any]:
+        if handler_name not in self.handlers:
+            err_message = f'Unable to find settings handler for "{handler_name}"'
 
-        err_message = f'Unable to find setting value for "{name}" in loaded settings'
+            if throw_error:
+                raise MinderError(err_message)
 
-        if throw_error:
-            raise MinderError(err_message)
+            logger.error(err_message)
+            return None
 
-        logger.error(err_message)
-        return None
+        hdr = self.handlers[handler_name]
+
+        if setting_name:
+            if not hdr.can_handle_setting(setting_name):
+                err_message = f'No such setting "{setting_name}" found in handler "{handler_name}"'
+
+                if throw_error:
+                    raise MinderError(err_message)
+
+                logger.error(err_message)
+                return None
+
+            settings = [setting_name]
+        else:
+            settings = hdr.handled_settings
+
+        # TODO: Fix this
+        return settings

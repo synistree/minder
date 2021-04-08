@@ -2,6 +2,9 @@ APScheduler
 click
 dateparser
 discord.py
+discord-ext-menus
+discord-py-slash-command
+emoji
 python-dotenv
 humanize
 IPython

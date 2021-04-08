@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import dateparser
+import discord
 import os
 import os.path
 import pytz
+import traceback
 import logging
 
 from dataclasses import dataclass, field
@@ -244,3 +246,15 @@ class FuzzyTimeConverter(commands.Converter):
             raise commands.BadArgument(f'Unable to parse fuzzy time for "{ctx.author.name}": {ex}')
 
         return fuz_time
+
+
+def build_stacktrace_embed(from_exception: Exception = None) -> str:
+    exc_info = traceback.format_exc(chain=True)
+
+    if from_exception and hasattr(from_exception, '__traceback__'):
+        exc_info = traceback.format_exception(type(from_exception), from_exception, from_exception.__traceback__)
+
+    exc_out = "".join(exc_info)
+    logger.debug(f'Reporting stack trace via embed:\n{exc_out}')
+
+    return discord.Embed(title='Stack Trace', description=f'```python\n{exc_out}\n```')

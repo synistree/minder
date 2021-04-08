@@ -2,6 +2,7 @@ import logging
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from discord.ext import commands
+from discord_slash import SlashCommand
 from redisent.helpers import RedisentHelper
 from sqlalchemy.engine import Engine, create_engine
 
@@ -16,6 +17,7 @@ class MinderBot(commands.Bot):
     redis_helper: RedisentHelper
     sa_engine: Engine
     scheduler: AsyncIOScheduler
+    slash_cmd: SlashCommand
 
     is_ready: bool = False
     init_done: bool = False
@@ -36,6 +38,8 @@ class MinderBot(commands.Bot):
         Base.metadata.create_all(self.sa_engine)
 
         self.scheduler = AsyncIOScheduler({'apscheduler.timezone': Config.USE_TIMEZONE})
+
+        self.slash_cmd = SlashCommand(self, override_type=True, sync_commands=True)
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:
