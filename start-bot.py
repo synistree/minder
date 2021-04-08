@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.8
+#!/usr/bin/env python
 
 from minder.bot import build_bot
 from minder.config import Config

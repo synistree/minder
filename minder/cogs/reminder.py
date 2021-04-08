@@ -7,13 +7,12 @@ import humanize
 from datetime import datetime
 from discord.ext import commands, menus
 from discord_slash import cog_ext, SlashContext
-from emoji import EMOJI_ALIAS_UNICODE as EMOJIS
 from typing import List, Optional, Sequence, Any
 
 from minder.cogs.base import BaseCog
 from minder.errors import MinderError
 from minder.models import Reminder
-from minder.utils import FuzzyTimeConverter, Timezone, FuzzyTime, build_stacktrace_embed
+from minder.utils import FuzzyTimeConverter, Timezone, FuzzyTime, build_stacktrace_embed, EMOJIS
 
 logger = logging.getLogger(__name__)
 

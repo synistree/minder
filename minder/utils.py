@@ -8,6 +8,13 @@ import pytz
 import traceback
 import logging
 
+try:
+    from emoji import EMOJI_ALIAS_UNICODE as EMOJIS
+except ImportError:
+    # Found the OSX package at least needs the "_ENGLISH" suffix
+    from emoji import EMOJI_ALIAS_UNICODE_ENGLISH as EMOJIS
+
+
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from discord.ext import commands
