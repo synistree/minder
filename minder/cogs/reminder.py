@@ -9,6 +9,7 @@ from discord.ext import commands, menus
 from discord_slash import cog_ext, SlashContext
 from typing import List, Optional
 
+from minder.bot.checks import is_admin
 from minder.cogs.base import BaseCog
 from minder.models import Reminder
 from minder.utils import FuzzyTimeConverter, Timezone, FuzzyTime, build_stacktrace_embed, EMOJIS
@@ -200,6 +201,7 @@ class ReminderCog(BaseCog):
 
         await ctx.send(msg_out)
 
+    @commands.check_any(commands.is_owner(), is_admin())
     @commands.guild_only()
     @reminders.command(name='review')
     async def review_reminders(self, ctx: commands.Context, member: discord.Member = None) -> None:

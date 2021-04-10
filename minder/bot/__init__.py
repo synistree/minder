@@ -1,4 +1,5 @@
 import logging
+import os.path
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from discord.ext import commands
@@ -9,6 +10,7 @@ from sqlalchemy.engine import Engine, create_engine
 from minder.config import Config
 from minder.cogs.base import BaseCog
 from minder.cogs.errors import ErrorHandlerCog
+from minder.bot.config import BotConfig
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +20,7 @@ class MinderBot(commands.Bot):
     sa_engine: Engine
     scheduler: AsyncIOScheduler
     slash_cmd: SlashCommand
+    bot_config: BotConfig
 
     is_ready: bool = False
     init_done: bool = False
@@ -39,7 +42,20 @@ class MinderBot(commands.Bot):
 
         self.scheduler = AsyncIOScheduler({'apscheduler.timezone': Config.USE_TIMEZONE})
 
-        self.slash_cmd = SlashCommand(self, override_type=True, sync_commands=True)
+        if Config.BOT_CONFIG_YAML:
+            bot_yaml_path = Config.BOT_CONFIG_YAML
+            if not os.path.exists(bot_yaml_path):
+                logger.warning(f'Unable to find bot YAML config specified by Config.BOT_CONFIG_YAML in "{bot_yaml_path}". Using empty default')
+                self.bot_config = BotConfig()
+            else:
+                try:
+                    self.bot_config = BotConfig.load(Config.BOT_CONFIG_YAML)
+                    logger.info(f'Successfully loaded bot YAML config from "{Config.BOT_CONFIG_YAML}" per application config')
+                except Exception as ex:
+                    logger.error(f'Error loading bot config from "{Config.BOT_CONFIG_YAML}": {ex}. Using empty config.')
+                    self.bot_config = BotConfig()
+
+        self.slash_cmd = SlashCommand(self, override_type=True, sync_commands=Config.SYNC_SLASH_COMMANDS)
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:

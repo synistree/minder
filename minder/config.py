@@ -36,6 +36,7 @@ def _load_from_environ(name: str, default: Optional[Any]) -> Any:
 class Config:
     ENABLE_DEBUG: bool = _load_from_environ('ENABLE_DEBUG', False)
     BOT_PREFIX: str = _load_from_environ('BOT_PREFIX', '%')
+    BOT_CONFIG_YAML: str = _load_from_environ('BOT_CONFIG_YAML', None)
     FLASK_HOST: str = _load_from_environ('FLASK_HOST', '0.0.0.0')
     FLASK_PORT: int = _load_from_environ('FLASK_PORT', 9090)
     REDIS_URL: str = _load_from_environ('REDIS_URL', 'redis://:@localhost:6379/0')
