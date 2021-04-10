@@ -2,7 +2,7 @@ import IPython
 
 
 def register_app_cli(app):
-    @app.cli.command('ipy-shell', help='IPython shell for working within the Quart context')
+    @app.cli.command('ipy-shell', help='IPython shell for working within the Flask context')
     def ipy_shell():
         context = {}
         context.update(app.make_shell_context())

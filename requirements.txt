@@ -14,7 +14,8 @@ colorlog
 colorama
 
 #redisent master release
-git+git://github.com/synistree/redisent.git#egg=redisent
+#git+git://github.com/synistree/redisent.git#egg=redisent
+redisent
 
 #web
 flask
