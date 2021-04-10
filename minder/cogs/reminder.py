@@ -7,27 +7,13 @@ import humanize
 from datetime import datetime
 from discord.ext import commands, menus
 from discord_slash import cog_ext, SlashContext
-from typing import List, Optional, Sequence, Any
+from typing import List, Optional
 
 from minder.cogs.base import BaseCog
-from minder.errors import MinderError
 from minder.models import Reminder
 from minder.utils import FuzzyTimeConverter, Timezone, FuzzyTime, build_stacktrace_embed, EMOJIS
 
 logger = logging.getLogger(__name__)
-
-
-class ReminderMenuSource(menus.ListPageSource):
-    def __init__(self, entries: Sequence[Any], per_page: int = None) -> None:
-        per_page = per_page or 2
-        super().__init__(entries, per_page=per_page)
-
-    async def format_page(self, menu: ReminderMenu, entries: List[Reminder]) -> str:
-        offset = menu.current_page * self.per_page
-        if offset + 1 > len(entries):
-            raise MinderError(f'Unable to enumerate reminder menu for page "{menu.current_page}" with only {len(entries)} entries')
-
-        return entries[offset].as_markdown(author=menu.ctx.author, channel=menu.ctx.channel)
 
 
 class ReminderMenu(menus.Menu):
@@ -35,6 +21,9 @@ class ReminderMenu(menus.Menu):
     header: str
 
     result: bool = None
+
+    KEEP_EMOJI = EMOJIS[':white_check_mark:']
+    REMOVE_EMOJI = EMOJIS[':heavy_multiplication_x:']
 
     def __init__(self, reminder: Reminder, *args, header: str = None, timeout: float = None, **kwargs) -> None:
         kwargs['timeout'] = timeout or 30.0
@@ -47,7 +36,7 @@ class ReminderMenu(menus.Menu):
     async def send_initial_message(self, ctx: commands.Context, channel: discord.abc.Messageable) -> None:
         return await channel.send(self.header, embed=self.reminder.as_markdown(author=ctx.author, channel=channel, as_embed=True))
 
-    @menus.button(EMOJIS[':white_check_mark:'])
+    @menus.button(KEEP_EMOJI)
     async def on_keep(self, payload) -> None:
         logger.info(f'Received keep confirmation on {payload}')
         self.result = True
@@ -56,7 +45,7 @@ class ReminderMenu(menus.Menu):
 
         self.stop()
 
-    @menus.button(EMOJIS[':heavy_multiplication_x:'])
+    @menus.button(REMOVE_EMOJI)
     async def on_remove(self, payload) -> None:
         logger.info(f'Received removal confirmation on {payload}')
         self.result = False

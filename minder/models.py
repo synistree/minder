@@ -139,10 +139,17 @@ class Reminder(RedisEntry):
                         channel_id=channel_id, channel_name=channel_name, provided_when=provided_when, content=content,
                         from_dm=from_dm)
 
-    def as_markdown(self, author: discord.Member = None, channel: discord.TextChannel = None,
+    def as_markdown(self, author: Union[discord.User, discord.Member] = None, channel: Union[discord.TextChannel, discord.DMChannel] = None,
                     as_embed: Union[discord.Embed, bool] = False) -> Union[discord.Embed, str]:
-        member_str = author.mention or self.member_name
-        channel_str = channel.mention or self.channel_name
+        channel_str = self.channel_name
+        member_str = self.member_name
+
+        if channel:
+            channel_str = channel.name if isinstance(channel, discord.DMChannel) else channel.mention
+
+        if author:
+            member_str = author.mention
+
         emb_content = self.content if '```' in self.content else f'```{self.content}```'
 
         created_dt = self.trigger_time.created_time
