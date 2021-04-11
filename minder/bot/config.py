@@ -80,6 +80,39 @@ class BotConfig:
         logger.warning(err_message)
         return None
 
+    def get_user_setting(self, user_id: int, name: str, throw_error: bool = False, **kwargs) -> Optional[Any]:
+        if 'default' in kwargs:
+            has_default = True
+            default = kwargs['default']
+        else:
+            has_default = False
+            default = None
+
+        if user_id not in self.users:
+            err_message = f'Requested setting for "{name}" of non-existent user with ID "{user_id}"'
+
+            if throw_error:
+                raise MinderError(err_message)
+
+            logger.warning(err_message)
+            return None
+
+        usr = self.get_user(user_id=user_id, throw_error=False)
+
+        if name in usr:
+            return usr[name]
+
+        if has_default:
+            return default
+
+        err_message = f'Requested missing setting for "{name}" from user "{usr["name"]}" (ID: {user_id})'
+
+        if throw_error:
+            raise MinderError(err_message)
+
+        logger.warning(err_message)
+        return None
+
     def _user_by_name(self, username: str) -> Optional[Mapping[str, Any]]:
         for usr in self.users.values():
             if usr['name'] == username:

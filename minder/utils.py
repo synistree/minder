@@ -5,23 +5,23 @@ import discord
 import os
 import os.path
 import pytz
-import traceback
 import logging
 
 try:
     from emoji import EMOJI_ALIAS_UNICODE as EMOJIS
 except ImportError:
     # Found the OSX package at least needs the "_ENGLISH" suffix
-    from emoji import EMOJI_ALIAS_UNICODE_ENGLISH as EMOJIS
+    from emoji import EMOJI_ALIAS_UNICODE_ENGLISH as EMOJIS  # noqa: F401
 
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from discord.ext import commands
-from typing import Union, Optional, Mapping, Any, MutableMapping
+from typing import Union, Optional, Any, MutableMapping, Mapping
 
 from minder.config import Config
-from minder.errors import MinderError
+from minder.errors import MinderError, get_stacktrace
+from minder.types import DateTimeType, TimezoneType
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +71,7 @@ def validate_timezone(target_tz: str, throw_error: bool = False) -> bool:
         return False
 
 
-def format_datetime(source: datetime, target: Union[str, pytz.tzfile.DstTzInfo] = None, throw_error: bool = True) -> datetime:
+def format_datetime(source: datetime, target: TimezoneType = None, throw_error: bool = True) -> datetime:
     if not target:
         target = Config.USE_TIMEZONE or 'UTC'
 
@@ -131,7 +131,14 @@ class Timezone:
         return FuzzyTime.build(value, created_time=self.format_datetime(created_dt), use_timezone=self)
 
     @classmethod
-    def get_timezone(cls, timezone: str, throw_error: bool = True) -> Optional[pytz.tzinfo.BaseTzInfo]:
+    def is_valid_timezone(cls, timezone_name: str) -> bool:
+        if not cls.get_timezone(timezone_name, throw_error=False):
+            return False
+
+        return True
+
+    @classmethod
+    def get_timezone(cls, timezone: TimezoneType, throw_error: bool = True) -> Optional[pytz.tzinfo.BaseTzInfo]:
         try:
             return pytz.timezone(timezone)
         except Exception as ex:
@@ -152,7 +159,8 @@ class Timezone:
             return None
 
     @classmethod
-    def build(cls, timezone_name: str, throw_error: bool = True) -> Optional[Timezone]:
+    def build(cls, timezone_name: str = None, throw_error: bool = True) -> Optional[Timezone]:
+        timezone_name = timezone_name or 'UTC'
         tz = cls.get_timezone(timezone_name, throw_error=throw_error)
         if tz:
             return Timezone(timezone_name=timezone_name, timezone=tz)
@@ -163,6 +171,9 @@ class Timezone:
 
         raise MinderError(f'Invalid timezone provided: "{timezone_name}"')
 
+    def as_dict(self) -> Mapping[str, Any]:
+        return {'timezone_name': self.timezone_name, 'timezone': self.timezone}
+
 
 @dataclass
 class FuzzyTime:
@@ -171,7 +182,7 @@ class FuzzyTime:
     created_time: datetime = field(default_factory=datetime.now)
     resolved_time: datetime = field(init=False)
 
-    use_timezone: Optional[Timezone] = field(default=None)
+    use_timezone: Timezone = field(default_factory=lambda value: Timezone.build(value))
 
     @property
     def created_timestamp(self) -> float:
@@ -216,18 +227,44 @@ class FuzzyTime:
         self.resolved_time = res_time
 
     @classmethod
-    def build(cls, provided_when: str, created_time: Union[float, int, datetime] = None, use_timezone: Timezone = None) -> FuzzyTime:
+    def build(cls, provided_when: str, created_time: DateTimeType = None,
+              use_timezone: TimezoneType = None) -> FuzzyTime:
+        if use_timezone:
+            if isinstance(use_timezone, pytz.tzinfo.BaseTzInfo):
+                timezone = use_timezone.zone
+            elif isinstance(use_timezone, str):
+                timezone = Timezone.build(use_timezone, throw_error=False)
+                if not timezone:
+                    raise MinderError(f'Invalid timezone provided: "{use_timezone}"')
+            else:
+                timezone = use_timezone
+        else:
+            timezone = Timezone.build()
+
+        tz = timezone.timezone
         kwargs: MutableMapping[str, Any] = {'provided_when': provided_when, 'use_timezone': use_timezone}
-        tz = use_timezone.timezone if use_timezone else pytz.utc
 
         if created_time:
-            kwargs['created_time'] = datetime.fromtimestamp(created_time, tz) if isinstance(created_time, (int, float,)) else created_time.astimezone(tz)
+            if isinstance(created_time, (int, float,)):
+                c_time = datetime.fromtimestamp(created_time, tz)
+            else:
+                c_time = created_time.astimezone(tz)
+
+            kwargs['created_time'] = c_time
 
         return FuzzyTime(**kwargs)
 
-    @classmethod
-    def from_dict(cls, dict_mapping: Mapping[str, Any]) -> FuzzyTime:
-        return FuzzyTime(provided_when=dict_mapping['provided_when'], created_time=dict_mapping.get('created_time', None))
+
+class TimezoneConverter(commands.Converter):
+    async def convert(self, ctx: commands.Context, tz_name: str) -> Timezone:
+        author = ctx.author.mention if ctx.author.guild else ctx.author.name
+        new_tz = Timezone.build(tz_name, throw_error=False)
+
+        if new_tz:
+            return new_tz
+
+        await ctx.send(f'Sorry {author}, invalid timezone "{tz_name}"')
+        raise commands.BadArgument(f'Invalid timezone name "{tz_name}" when attempting to convert to a timezone')
 
 
 class FuzzyTimeConverter(commands.Converter):
@@ -241,27 +278,24 @@ class FuzzyTimeConverter(commands.Converter):
         self.timezone = Timezone.build(timezone_name)
         self.created_time = created_time.astimezone(self.timezone.timezone)
 
-    async def convert(self, ctx, when: str) -> FuzzyTime:
+    async def convert(self, ctx: commands.Context, when: str) -> FuzzyTime:
+        author = ctx.author.mention if ctx.author.guild else ctx.author.name
+
         if not self.timezone:
-            await ctx.send(f'Sorry {ctx.author.mention}, provided timezone `{self.timezone_name}` is not valid')
-            raise commands.BadArgument(f'Invalid timezone string "{self.timezone_name}" provided when converting fuzzy time string "{when}"')
+            await ctx.send(f'Sorry {author}, provided timezone `{self.timezone_name}` is not valid')
+            raise commands.BadArgument(f'Invalid timezone string "{self.timezone_name}" when converting fuzzy time string "{when}"')
 
         try:
             fuz_time = FuzzyTime.build(provided_when=when, created_time=self.created_time, use_timezone=self.timezone)
         except ValueError as ex:
-            await ctx.send(f'Sorry {ctx.author.mention}, provided fuzzy time `{when}` cannot be resolved :frowning: Try something like: `in 5 minutes`')
-            raise commands.BadArgument(f'Unable to parse fuzzy time for "{ctx.author.name}": {ex}')
+            await ctx.send(f'Sorry {author}, provided fuzzy time `{when}` cannot be resolved :frowning: Try something like: `in 5 minutes`')
+            raise commands.BadArgument(f'Unable to parse fuzzy time for "{ctx.author.name}": {ex}') from ex
 
         return fuz_time
 
 
 def build_stacktrace_embed(from_exception: Exception = None) -> str:
-    exc_info = traceback.format_exc(chain=True)
-
-    if from_exception and hasattr(from_exception, '__traceback__'):
-        exc_info = traceback.format_exception(type(from_exception), from_exception, from_exception.__traceback__)
-
-    exc_out = "".join(exc_info)
+    exc_out = get_stacktrace(from_exception)
     logger.debug(f'Reporting stack trace via embed:\n{exc_out}')
 
     return discord.Embed(title='Stack Trace', description=f'```python\n{exc_out}\n```')

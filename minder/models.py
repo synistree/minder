@@ -3,6 +3,7 @@ from __future__ import annotations
 import discord
 import humanize
 import os.path
+import logging
 import yaml
 
 from dataclasses import dataclass, field
@@ -11,7 +12,14 @@ from redisent.models import RedisEntry
 from typing import Union, Optional, Mapping, Any
 
 from minder.errors import MinderError
-from minder.utils import FuzzyTime
+from minder.utils import FuzzyTime, Timezone
+
+logger = logging.getLogger(__name__)
+
+ChannelType = Union[discord.TextChannel, discord.DMChannel]
+MemberType = Union[discord.User, discord.Member]
+AnyChannelType = Union[ChannelType, Mapping[str, str]]
+AnyMemberType = Union[MemberType, Mapping[str, str]]
 
 
 @dataclass
@@ -83,6 +91,11 @@ class Reminder(RedisEntry):
     trigger_time: FuzzyTime = field(init=False)
 
     from_dm: Optional[bool] = field(default=None)
+    timezone_name: str = field(default='UTC')
+
+    @property
+    def timezone(self) -> Timezone:
+        return Timezone.build(self.timezone_name)
 
     @property
     def trigger_dt(self) -> datetime:
@@ -107,39 +120,62 @@ class Reminder(RedisEntry):
         return self.trigger_dt < dt_now
 
     def __post_init__(self) -> None:
+        if not self.timezone:
+            logger.warning(f'No timezone setting found for "{self.redis_name}". Setting to "UTC"')
+            self.timezone = 'UTC'
+
         self.redis_name = f'{self.member_id}:{self.trigger_ts}'
-        self.trigger_time = FuzzyTime.build(self.provided_when, created_time=self.created_ts)
+        self.trigger_time = FuzzyTime.build(self.provided_when, created_time=self.created_ts, use_timezone=self.timezone)
 
         if self.from_dm is None:
             self.from_dm = True if not self.channel_id or not self.channel_name else False
 
     @classmethod
-    def build(cls, trigger_time: Union[FuzzyTime, str], member: discord.Member, content: str, channel: Union[discord.TextChannel, discord.DMChannel] = None,
-              created_at: datetime = None) -> Reminder:
+    def build(cls, trigger_time: Union[FuzzyTime, str], member: AnyMemberType, content: str, channel: AnyChannelType = None,
+              created_at: datetime = None, use_timezone: Union[str, Timezone] = None) -> Reminder:
+        member_id, member_name = None, None
         channel_id, channel_name = None, None
         from_dm = False
 
-        if channel:
-            channel_id = channel.id
+        if use_timezone and not isinstance(use_timezone, Timezone):
+            if not Timezone.get_timezone(use_timezone, throw_error=False):
+                raise MinderError(f'Invalid timezone provided: "{use_timezone}"')
 
-            if isinstance(channel, discord.DMChannel):
-                channel_name = f'DM {member.name}'
-                from_dm = True
+            use_timezone = Timezone.build(timezone_name=use_timezone)
+
+        if isinstance(member, discord.abc.Messageable):
+            member_id = member.id
+            member_name = member.name
+        else:
+            member_id = member['id']
+            member_name = member['name']
+
+        if channel:
+            if isinstance(channel, discord.abc.Messageable):
+                channel_id = channel.id
+
+                if isinstance(channel, discord.DMChannel):
+                    channel_name = f'DM {member_name}'
+                    from_dm = True
+                else:
+                    channel_name = channel.name
             else:
-                channel_name = channel.name
+                channel_id = channel['id']
+                channel_name = channel['name']
 
         if not isinstance(trigger_time, FuzzyTime):
-            trigger_time = FuzzyTime.build(provided_when=trigger_time, created_time=created_at)
+            trigger_time = FuzzyTime.build(provided_when=trigger_time, created_time=created_at, use_timezone=use_timezone)
 
         created_ts = trigger_time.created_timestamp
         trigger_ts = trigger_time.resolved_timestamp
         provided_when = trigger_time.provided_when
+        tz_name = use_timezone.timezone_name if use_timezone else None
 
-        return Reminder(created_ts=created_ts, trigger_ts=trigger_ts, member_id=member.id, member_name=member.name,
+        return Reminder(created_ts=created_ts, trigger_ts=trigger_ts, member_id=member_id, member_name=member_name,
                         channel_id=channel_id, channel_name=channel_name, provided_when=provided_when, content=content,
-                        from_dm=from_dm)
+                        from_dm=from_dm, timezone_name=tz_name)
 
-    def as_markdown(self, author: Union[discord.User, discord.Member] = None, channel: Union[discord.TextChannel, discord.DMChannel] = None,
+    def as_markdown(self, author: MemberType = None, channel: ChannelType = None,
                     as_embed: Union[discord.Embed, bool] = False) -> Union[discord.Embed, str]:
         channel_str = self.channel_name
         member_str = self.member_name
@@ -159,7 +195,7 @@ class Reminder(RedisEntry):
             time_left = 'N/A'
             out_prefix = 'Complete Reminder'
         else:
-            time_left = humanize.naturaltime(self.trigger_time.num_seconds_left, future=True)
+            time_left = humanize.naturaldelta(self.trigger_time.num_seconds_left, months=False)
             out_prefix = 'Pending Reminder'
 
         if as_embed:
@@ -172,6 +208,7 @@ class Reminder(RedisEntry):
 
             emb.add_field(name='Remind At', value=f'`{trigger_dt.ctime()}` (based on `{self.trigger_time.provided_when or "N/A"}`)', inline=False)
             emb.add_field(name='Amount of time left', value=f'`{time_left}`', inline=False)
+            emb.add_field(name='Timezone', value=f'`{self.timezone_name}`', inline=False)
             emb.add_field(name='Requested At', value=f'`{created_dt.ctime()}`', inline=False)
 
             emb.add_field(name='Reminder Content', value=emb_content, inline=False)

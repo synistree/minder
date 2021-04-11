@@ -60,7 +60,7 @@ class ReminderMenu(menus.Menu):
         return self.result
 
 
-class ReminderCog(BaseCog):
+class ReminderCog(BaseCog, name='reminder'):
     async def _sync_init(self) -> None:
         logger.info('Starting scheduler in Reminder cog and processing and pending Reminders')
 
@@ -154,12 +154,21 @@ class ReminderCog(BaseCog):
         await ctx.send(msg_out)
 
     @cog_ext.cog_subcommand(base='reminders', name='add', description='Add a new reminder')
-    async def _reminders_add(self, ctx: SlashContext, when: str, content: str) -> None:
+    async def _reminders_add(self, ctx: SlashContext, when: str, content: str, timezone: str = None) -> None:
         if not self.bot.init_done:
             await ctx.send('Sorry, the bot is not yet loaded.. Try again in a few moments')
             return
 
-        fuzzy_when = FuzzyTime.build(provided_when=when)
+        if not timezone:
+            timezone = self.bot.bot_config.get_user_setting(ctx.author.id, 'timezone', default='UTC')
+
+        user_tz = Timezone.build(timezone, throw_error=False)
+
+        if not user_tz:
+            await ctx.send(f'Invalid timezone provided "{timezone}".. :slight_frown:')
+            return
+
+        fuzzy_when = FuzzyTime.build(provided_when=when, use_timezone=user_tz)
         await ctx.send(f'Would add new reminder for `{fuzzy_when.resolved_time}` with ```\n{content}\n``` based on "{when}"')
 
     @cog_ext.cog_subcommand(base='reminders', name='clean', description='Purge completed or all reminders')

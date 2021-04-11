@@ -37,6 +37,9 @@ dictConfig({
         'discord': {
             'level': logging.INFO if os.environ.get('DEBUG', False) else logging.WARNING
         },
+        'cogwatch': {
+            'level': logging.DEBUG
+        },
         '': {
             'handlers': ['stream'],
             'level': DEFAULT_LOG_LEVEL

@@ -1,5 +1,6 @@
 APScheduler
 click
+cogwatch
 dateparser
 discord.py
 discord-ext-menus

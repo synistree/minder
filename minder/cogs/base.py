@@ -1,18 +1,19 @@
 import logging
 
 from discord.ext import commands
-
 from typing import List
+
+from minder.bot.checks import is_admin
 
 logger = logging.getLogger(__name__)
 
 
-class BaseCog(commands.Cog):
+class BaseCog(commands.Cog, name='base'):
     bot: commands.Bot
 
     _subclasses: List[commands.Cog] = []
 
-    def __init__(self, bot: commands.Bot) -> None:
+    def __init__(self, bot: commands.Bot, *args, **kwargs) -> None:
         super().__init__()
         self.bot = bot
 

@@ -6,14 +6,16 @@ from discord.ext import commands
 
 from redisent.errors import RedisError
 
+from minder.cogs.base import BaseCog
+
 logger = logging.getLogger(__name__)
 
 
-class ErrorHandlerCog(commands.Cog):
+class ErrorHandlerCog(BaseCog, name='errors'):
     IGNORED_EXCEPTIONS = (commands.CommandNotFound,)
 
-    def __init__(self, bot) -> None:
-        self.bot = bot
+    def __init__(self, bot: commands.Bot, *args, **kwargs) -> None:
+        super().__init__(bot, *args, **kwargs)
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx: commands.Context, error: commands.CommandError) -> None:

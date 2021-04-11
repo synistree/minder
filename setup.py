@@ -26,5 +26,8 @@ setuptools.setup(
     package_data={
         'minder': ['py.typed']
     },
-    install_requires=install_reqs
+    install_requires=install_reqs,
+    entry_points={
+        'console_scripts': ['minder=minder.cli:run_cli']
+    }
 )

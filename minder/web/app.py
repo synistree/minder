@@ -4,9 +4,10 @@ import logging
 
 from minder.cli import register_app_cli
 from minder.config import Config
+from minder.errors import MinderWebError
 from minder.web.model import db
 
-from flask import Flask, redirect, url_for
+from flask import Flask, redirect, url_for, jsonify
 from flask_bootstrap import Bootstrap, WebCDN
 from flask_login import LoginManager
 from flask_moment import Moment
@@ -73,7 +74,10 @@ class FlaskApp(Flask):
         # Similarly, replicates the functionality of the "error_handler" decorator
         # This is used to automatically redirect to "/login" if the user is not already
         # logged in (i.e. HTTP 401 error)
-        self.register_error_handler(Unauthorized, self._handle_error)
+        self.register_error_handler(Unauthorized, self._handle_auth_error)
+
+        # Register error handler for MinderWebError errors
+        self.register_error_handler(MinderWebError, self._handle_app_error)
 
         # Register the Click CLI extensions from "minder.cli"
         register_app_cli(self)
@@ -96,7 +100,14 @@ class FlaskApp(Flask):
             from minder.web.model import User
             return User.query.get(int(user_id))
 
-    def _handle_error(self, exception: Exception = None):
+    def _handle_app_error(self, exception: MinderWebError = None):
+        response = jsonify(exception.as_dict())
+        response.status_code = exception.status_code
+        logger.error(f'Handling {exception.status_code} error for "{exception}"')
+
+        return response
+
+    def _handle_auth_error(self, exception: Unauthorized = None):
         return redirect(url_for('app.login'))
 
     def run(self, *args, **kwargs) -> None:

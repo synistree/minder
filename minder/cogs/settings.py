@@ -12,12 +12,11 @@ from minder.utils import build_stacktrace_embed
 logger = logging.getLogger(__name__)
 
 
-class SettingsCog(BaseCog):
+class SettingsCog(BaseCog, name='settings'):
     manager: SettingsManager
 
-    def __init__(self, bot: commands.Bot) -> None:
-        super().__init__(bot)
-
+    def __init__(self, bot: commands.Bot, *args, **kwargs) -> None:
+        super().__init__(bot, *args, **kwargs)
         self.manager = SettingsManager(self.bot.redis_helper)
 
     @commands.dm_only()
@@ -71,3 +70,31 @@ class SettingsCog(BaseCog):
             return
 
         await ctx.send(f'**ALL** user config:```python\n{pformat(self.bot.bot_config.users, indent=2)}\n```')
+
+    @commands.dm_only()
+    @commands.check_any(commands.is_owner(), is_admin())
+    @commands.group(name='cogs')
+    async def cogs(self, ctx: commands.Context) -> None:
+        if not await self.check_ready_or_fail(ctx):
+            return
+
+        if ctx.invoked_subcommand:
+            return
+
+        msg_out = f'Found #{len(self.bot.cogs)} cogs:\n'
+        for cog_name, cog_ent in self.bot.cogs.items():
+            msg_out += f'> Cog `{cog_name}` (`{cog_ent.qualified_name}`): `{cog_ent}`\n'
+
+        await ctx.send(msg_out)
+
+    @cogs.command(name='reload')
+    async def reload(self, ctx: commands.Context, cog_name: str = None) -> None:
+        if cog_name and cog_name not in self.bot.cogs:
+            await ctx.send(f'Sorry, cannot find cog "{cog_name}"')
+            return
+
+        cogs = await self.bot.reload_cogs(cog_name=cog_name)
+        logger.info(f'Reloading cogs based as requested by {ctx.author.name}...')
+
+        cog_out = '\n> -> '.join([f'`{cog}`' for cog in cogs])
+        await ctx.send(f'Successfully re-registered cogs:\n{cog_out}\n')

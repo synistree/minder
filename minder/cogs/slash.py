@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-import discord
 import logging
 
 from discord_slash import cog_ext, SlashContext, utils
 
 from minder.cogs.base import BaseCog
+from minder.config import Config
 
 logger = logging.getLogger(__name__)
 
 
-class SlashCog(BaseCog):
+class SlashCog(BaseCog, name='slash'):
     @cog_ext.cog_slash(name='mrow')
     async def _mrow(self, ctx: SlashContext):
         # embed = discord.Embed(title='MROW', description=f':cat: {ctx.author.mention} :smile:')

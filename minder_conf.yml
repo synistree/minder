@@ -1,0 +1,25 @@
+defaults:
+  admins: [483182150066110464]  # "synistree"
+  extended_errors: False        # Include traceback in errors
+  ignore_other_guilds: True     # Indicates that guilds not specified here are otherwise ignored
+
+users:
+  483182150066110464: # "synistree"
+    name: synistree
+    is_admin: True
+
+  760435787400609794: # "Anaï"
+    name: Anai
+    is_admin: False
+        
+guilds:
+  751297103493595229:
+    name: botwerk
+    admins: [483182150066110464]    # "synistree"
+    bot_channel: 751297104080535584 # "#oh-hai"
+
+  772650743172694036:
+    name: SynHub
+    admins: [483182150066110464]    # "synistree"
+    bot_channel: 779238734893023252 # "#bot-admin"
+    extended_errors: True
