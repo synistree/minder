@@ -7,7 +7,7 @@ from minder.config import Config
 from minder.errors import MinderWebError
 from minder.web.model import db
 
-from flask import Flask, redirect, url_for, jsonify
+from flask import Flask, redirect, url_for, jsonify, request
 from flask_bootstrap import Bootstrap, WebCDN
 from flask_login import LoginManager
 from flask_moment import Moment
@@ -16,7 +16,7 @@ from flask_pretty import Prettify
 from redisent.types import RedisType
 from redisent.helpers import RedisentHelper
 
-from typing import Any, Mapping
+from typing import Any, Mapping, Union
 
 from werkzeug.exceptions import Unauthorized
 
@@ -25,6 +25,14 @@ logger = logging.getLogger(__name__)
 
 
 class FlaskApp(Flask):
+    """
+    Minder Flask application
+
+    This is a subclass of :py:cls:`flask.Flask` which automatically loads and configures the minder Flask application
+
+    An instance of :py:cls:`redisent.helpers.RedisentHelper` as "redis_helper"
+    """
+
     redis_helper: RedisentHelper
 
     def __init__(self, import_name: str, *args, hostname: str = None, port: str = None, use_reloader: bool = None,
@@ -101,13 +109,30 @@ class FlaskApp(Flask):
             return User.query.get(int(user_id))
 
     def _handle_app_error(self, exception: MinderWebError = None):
-        response = jsonify(exception.as_dict())
-        response.status_code = exception.status_code
-        logger.error(f'Handling {exception.status_code} error for "{exception}"')
+        """
+        Handle any other application errors that might arrise in the form of :py:exc:`MinderWebError` exceptions
 
+        These should return "nice" JSON-ifyable results and an error log entry will be created recording the error
+        """
+
+        response = jsonify(exception.as_dict() if exception else {})
+        response.status_code = exception.status_code if exception else 500
+        err_message = f'Handling {response.status_code} error from "{request.remote_addr}" via "{request.url}"'
+
+        if exception:
+            err_message = f'{err_message}: {exception}'
+
+        logger.error(err_message)
         return response
 
     def _handle_auth_error(self, exception: Unauthorized = None):
+        """
+        Default exception handler for "Unauthorized" exceptions which will trigger a HTTP 302 redirect to the
+        login page
+
+        The actual value of "exception" is ignored here since it is only registered for "Unauthorized" exceptions
+        """
+
         return redirect(url_for('app.login'))
 
     def run(self, *args, **kwargs) -> None:
@@ -122,8 +147,8 @@ class FlaskApp(Flask):
         super().run(*args, **kwargs)
 
 
-def create_app(hostname: str = None, port: str = None, use_reloader: bool = None, overrides: Mapping[str, Any] = None, use_redis: RedisType = None) -> FlaskApp:
+def create_app(hostname: str = None, port: Union[int, str] = None, use_reloader: bool = None, overrides: Mapping[str, Any] = None, use_redis: RedisType = None) -> FlaskApp:
     hostname = hostname or Config.FLASK_HOST
-    port = port or str(Config.FLASK_PORT)
+    port = str(port or Config.FLASK_PORT)
     app = FlaskApp(__name__, hostname=hostname, port=port, use_reloader=use_reloader, overrides=overrides, use_redis=use_redis)
     return app

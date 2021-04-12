@@ -39,9 +39,22 @@ def test_get_index(client, session, fake_member, fake_text_channel):
     print('Sucessfully fetched authenticated index path after logging in with dummy user')
 
 
-def test_fetch_api(client):
+def test_api_reminders(client):
     rv = client.get('/api/reminders')
-    assert rv.status_code == 200, f'Unexpected HTTP status code returned from "/api/reminders": "{rv.status_code}" (expected HTTP 200 OK)'
-    assert not rv.json, f'Received unexpected results from "/api/reminders" (should be empty). Found:\n{pformat(rv.json)}'
+    # Should be:
+    # 'count': 0, 'data': [], 'is_error': False, 'message': 'No reminders found'}
 
-    print(f'Fetched successful, empty result from API')
+    assert rv.status_code == 200, f'Unexpected HTTP status code returned from "/api/reminders": "{rv.status_code}" (expected HTTP 200 OK)'
+    assert not rv.json['is_error'], f'Received unexpected error calling "/api/reminders". Found:\n{pformat(rv.json)}'
+    assert not rv.json['data'], f'Received unexpected results from "/api/reminders" (should be empty). Found:\n{pformat(rv.json["data"])}'
+
+    rv_msg = rv.json['message']
+    print(f'Fetched successful, empty result from API: "{rv_msg}"')
+
+    req_params = {'when': 'in 10 minutes', 'content': 'just pytesting', 'member_id': 12345, 'member_name': 'pytest'}
+
+    rv = client.post('/api/reminders', data=req_params)
+
+    assert rv.status_code == 200, f'Unexpected HTTP status code returned from "/api/reminders": "{rv.status_code}" (expected HTTP 200 OK)'
+    assert not rv.json['is_error'], f'Received unexpected error calling "/api/reminders". Found:\n{pformat(rv.json)}'
+    print(f'Got: {rv.json}')

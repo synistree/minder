@@ -7,7 +7,7 @@ from pprint import pformat
 from minder.bot.checks import is_admin
 from minder.cogs.base import BaseCog
 from minder.settings import SettingsManager
-from minder.utils import build_stacktrace_embed
+from minder.errors import build_stacktrace_embed
 
 logger = logging.getLogger(__name__)
 
@@ -33,16 +33,20 @@ class SettingsCog(BaseCog, name='settings'):
 
     @commands.dm_only()
     @settings.command(name='get')
-    async def settings_get(self, ctx: commands.Context, name: str) -> None:
+    async def settings_get(self, ctx: commands.Context, handler: str, setting_name: str = None) -> None:
         if not await self.check_ready_or_fail(ctx):
             return
 
         try:
-            settings = self.manager.get_setting(name)
-            await ctx.send(content=f'Found #{len(settings)} entries:```\n{settings}\n```')
+            settings = self.manager.get_settings(handler, setting_name=setting_name)
+            if settings:
+                await ctx.send(content=f'Found #{len(settings)} entries:```\n{settings}\n```')
+                return
+
+            await ctx.send(f'Sorry.. no matching settings found for "{handler}"')
         except Exception as ex:
-            logger.warning(f'Unable to fetch requested setting from manager for "{name}": {ex}')
-            await ctx.send(content=f'Sorry.. error fetching setting "{name}" from manager: {ex}', embed=build_stacktrace_embed(ex))
+            logger.warning(f'Unable to fetch requested setting from manager for "{handler}": {ex}')
+            await ctx.send(content=f'Sorry.. error fetching setting from "{handler}" using manager: {ex}', embed=build_stacktrace_embed(ex))
 
     @commands.dm_only()
     @commands.group(name='config')

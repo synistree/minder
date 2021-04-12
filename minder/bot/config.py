@@ -26,8 +26,8 @@ class BotConfig:
     extended_errors: bool
     ignore_other_guilds: bool
 
-    users: Mapping[str, Any]
-    guilds: Mapping[str, Any]
+    users: Mapping
+    guilds: Mapping
 
     def as_dict(self, only_guilds: List[int] = None) -> Mapping[str, Any]:
         if not only_guilds:
@@ -54,23 +54,22 @@ class BotConfig:
         self.users = users or {}
         self.guilds = guilds or {}
 
-    def get_user(self, username: str = None, user_id: int = None, throw_error: bool = False) -> Optional[Mapping[str, Any]]:
-        if not username and not user_id:
-            raise MinderError('Unable to determine what user to fetch. Neither "username" nor "user_id" were provided')
-
+    def get_user(self, username: str = None, user_id: int = None, throw_error: bool = False):
         if username:
             usr = self._user_by_name(username)
             if usr:
                 return usr
 
             target = f'"username": {username}'
-        else:
-            user_id = int(user_id)
+        elif user_id:
+            user_id = user_id
 
             if user_id in self.users:
                 return self.users[user_id]
 
             target = f'"user_id": {user_id}'
+        else:
+            raise MinderError('Unable to determine what user to fetch. Neither "username" nor "user_id" were provided')
 
         err_message = f'Unable to find configured user by {target}: Not found'
 
@@ -113,7 +112,7 @@ class BotConfig:
         logger.warning(err_message)
         return None
 
-    def _user_by_name(self, username: str) -> Optional[Mapping[str, Any]]:
+    def _user_by_name(self, username: str):
         for usr in self.users.values():
             if usr['name'] == username:
                 return usr
@@ -126,7 +125,7 @@ class BotConfig:
 
         return False
 
-    def get_guild(self, name: str = None, guild_id: int = None, throw_error: bool = False) -> Optional[Mapping[str, Any]]:
+    def get_guild(self, name: str = None, guild_id: int = None, throw_error: bool = False):
         if not name and not guild_id:
             raise MinderError('Unable to determine what guild to fetch. Neither "name" nor "guild_id" were provided')
 
@@ -138,8 +137,6 @@ class BotConfig:
 
             target = f'"name": {name}'
         else:
-            guild_id = int(guild_id)
-
             if guild_id in self.guilds:
                 return self.guilds[guild_id]
 
@@ -153,14 +150,14 @@ class BotConfig:
         logger.warning(err_message)
         return None
 
-    def _guild_by_name(self, name: str) -> Optional[Mapping[str, Any]]:
+    def _guild_by_name(self, name: str):
         for gld in self.guilds.values():
             if gld['name'] == name:
                 return gld
 
         return None
 
-    def has_guild(self, name: str = None) -> bool:
+    def has_guild(self, name: str) -> bool:
         if self._guild_by_name(name):
             return True
 

@@ -9,7 +9,7 @@ import yaml
 from dataclasses import dataclass, field
 from datetime import datetime
 from redisent.models import RedisEntry
-from typing import Union, Optional, Mapping, Any
+from typing import Union, Optional, Mapping, MutableMapping, Any
 
 from minder.errors import MinderError
 from minder.utils import FuzzyTime, Timezone
@@ -29,10 +29,10 @@ class UserSettings(RedisEntry):
     guild_id: Optional[int] = field(default=None)
     member_id: int = field(default_factory=int)
 
-    settings: Mapping[str, Any] = field(default_factory=dict)
+    settings: MutableMapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        self.redis_name = self.member_id
+        self.redis_name = str(self.member_id)
 
     def set_value(self, name: str, value: Any) -> bool:
         has_value = True if self.has_setting(name) else False
@@ -78,9 +78,6 @@ class Reminder(RedisEntry):
     member_id: int = field(default_factory=int)
     member_name: str = field(default_factory=str)
 
-    channel_id: int = field(default_factory=int)
-    channel_name: str = field(default_factory=str)
-
     provided_when: str = field(default_factory=str)
     content: str = field(default_factory=str)
 
@@ -90,8 +87,11 @@ class Reminder(RedisEntry):
     user_notified: bool = field(default=False, compare=False)
     trigger_time: FuzzyTime = field(init=False)
 
-    from_dm: Optional[bool] = field(default=None)
+    from_dm: Optional[bool] = field(default_factory=bool)
     timezone_name: str = field(default='UTC')
+
+    channel_id: Optional[int] = field(default_factory=int)
+    channel_name: Optional[str] = field(default_factory=str)
 
     @property
     def timezone(self) -> Timezone:
@@ -120,11 +120,21 @@ class Reminder(RedisEntry):
         return self.trigger_dt < dt_now
 
     def __post_init__(self) -> None:
-        if not self.timezone:
+        if not self.timezone_name:
             logger.warning(f'No timezone setting found for "{self.redis_name}". Setting to "UTC"')
-            self.timezone = 'UTC'
+            self.timezone_name = 'UTC'
 
-        self.redis_name = f'{self.member_id}:{self.trigger_ts}'
+        if not self.redis_name:
+            # TODO: Investigate if this happens and if there are better stragegies to deal with those cases.
+            #
+            # This did introduce a subtle bug where changing the member_id value and storing the entry resulted
+            # in a mismatch between the object "redis_name" value and the real one in Redis..
+
+            logger.warning(f'Updating "redis_name" since it appears to be unset. This should only happen once at most. (original name: {self.redis_name})')
+            self.redis_name = f'{self.member_id}:{self.trigger_ts}'
+
+        # TODO: This really does not need to be stored in Redis. Instead we should only store the timestamp and use the
+        # timezone info from the reminder entry class
         self.trigger_time = FuzzyTime.build(self.provided_when, created_time=self.created_ts, use_timezone=self.timezone)
 
         if self.from_dm is None:
@@ -136,12 +146,16 @@ class Reminder(RedisEntry):
         member_id, member_name = None, None
         channel_id, channel_name = None, None
         from_dm = False
+        target_tz: Optional[Timezone] = None
 
-        if use_timezone and not isinstance(use_timezone, Timezone):
-            if not Timezone.get_timezone(use_timezone, throw_error=False):
-                raise MinderError(f'Invalid timezone provided: "{use_timezone}"')
+        if use_timezone:
+            if isinstance(use_timezone, str):
+                if not Timezone.is_valid_timezone(use_timezone):
+                    raise MinderError(f'Invalid timezone provided: "{use_timezone}"')
 
-            use_timezone = Timezone.build(timezone_name=use_timezone)
+                target_tz = Timezone.build(timezone_name=use_timezone)
+            else:
+                target_tz = use_timezone
 
         if isinstance(member, discord.abc.Messageable):
             member_id = member.id
@@ -164,12 +178,12 @@ class Reminder(RedisEntry):
                 channel_name = channel['name']
 
         if not isinstance(trigger_time, FuzzyTime):
-            trigger_time = FuzzyTime.build(provided_when=trigger_time, created_time=created_at, use_timezone=use_timezone)
+            trigger_time = FuzzyTime.build(provided_when=trigger_time, created_time=created_at, use_timezone=target_tz)
 
         created_ts = trigger_time.created_timestamp
         trigger_ts = trigger_time.resolved_timestamp
         provided_when = trigger_time.provided_when
-        tz_name = use_timezone.timezone_name if use_timezone else None
+        tz_name = target_tz.timezone_name if target_tz else 'UTC'
 
         return Reminder(created_ts=created_ts, trigger_ts=trigger_ts, member_id=member_id, member_name=member_name,
                         channel_id=channel_id, channel_name=channel_name, provided_when=provided_when, content=content,

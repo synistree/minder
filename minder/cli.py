@@ -4,7 +4,7 @@ import os
 import logging
 
 from minder.bot import build_bot
-from minder.utils import get_stacktrace
+from minder.errors import get_stacktrace
 
 logger = logging.getLogger(__name__)
 

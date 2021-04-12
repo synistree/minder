@@ -117,7 +117,7 @@ class SettingsManager:
     handlers: Mapping[str, SettingsHandler]
     loaded_settings: Mapping[str, Any]
 
-    def get_all_settings(self) -> Mapping[str, List[str]]:
+    def get_all_settings(self) -> Mapping[str, SettingsHandler]:
         """
         Build a mapping of all supported handlers and settings
         """

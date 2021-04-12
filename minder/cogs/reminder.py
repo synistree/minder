@@ -7,12 +7,13 @@ import humanize
 from datetime import datetime
 from discord.ext import commands, menus
 from discord_slash import cog_ext, SlashContext
-from typing import List, Optional
+from typing import List, Optional, cast
 
 from minder.bot.checks import is_admin
 from minder.cogs.base import BaseCog
+from minder.errors import build_stacktrace_embed
 from minder.models import Reminder
-from minder.utils import FuzzyTimeConverter, Timezone, FuzzyTime, build_stacktrace_embed, EMOJIS
+from minder.utils import FuzzyTimeConverter, Timezone, FuzzyTime, EMOJIS
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class ReminderMenu(menus.Menu):
     reminder: Reminder
     header: str
 
-    result: bool = None
+    result: Optional[bool] = None
 
     KEEP_EMOJI = EMOJIS[':white_check_mark:']
     REMOVE_EMOJI = EMOJIS[':heavy_multiplication_x:']
@@ -34,7 +35,7 @@ class ReminderMenu(menus.Menu):
         self.reminder = reminder
         self.header = header or 'Keep or purge this reminder?'
 
-    async def send_initial_message(self, ctx: commands.Context, channel: discord.abc.Messageable) -> None:
+    async def send_initial_message(self, ctx: commands.Context, channel: discord.abc.Messageable) -> discord.Message:
         return await channel.send(self.header, embed=self.reminder.as_markdown(author=ctx.author, channel=channel, as_embed=True))
 
     @menus.button(KEEP_EMOJI)
@@ -57,7 +58,7 @@ class ReminderMenu(menus.Menu):
 
     async def prompt(self, ctx: commands.Context, channel: discord.abc.Messageable = None) -> bool:
         await self.start(ctx, channel=channel, wait=True)
-        return self.result
+        return True if self.result else False
 
 
 class ReminderCog(BaseCog, name='reminder'):
@@ -89,7 +90,7 @@ class ReminderCog(BaseCog, name='reminder'):
             self.bot.scheduler.add_job(self._process_reminder, kwargs={'reminder': rem, 'added_at': dt_now}, trigger='date', run_date=rem.trigger_dt,
                                        id=rem.redis_name)
 
-    async def _process_reminder(self, reminder: Reminder, added_at: datetime = None) -> None:
+    async def _process_reminder(self, reminder: Reminder, added_at: datetime = None) -> bool:
         added_at = added_at or datetime.now()
         author, channel = None, None
 
@@ -122,16 +123,16 @@ class ReminderCog(BaseCog, name='reminder'):
         if not rem_keys:
             return []
 
-        reminders = []
+        reminders: List[Reminder] = []
 
         for rem_id in rem_keys:
-            rem = Reminder.fetch(self.bot.redis_helper, redis_id='reminders', redis_name=rem_id)
+            rem = cast(Reminder, Reminder.fetch(self.bot.redis_helper, redis_id='reminders', redis_name=rem_id))
 
             if not rem:
                 logger.warning(f'Unexpectedly missing reminder for "{rem_id}"')
                 continue
 
-            if not include_complete and rem.is_complete:
+            if not include_complete and rem.is_complete:  # type: ignore[attr-defined]
                 logger.info(f'Skipping reminder for "{rem_id}" since reminder is marked complete')
                 continue
 
@@ -160,13 +161,13 @@ class ReminderCog(BaseCog, name='reminder'):
             return
 
         if not timezone:
-            timezone = self.bot.bot_config.get_user_setting(ctx.author.id, 'timezone', default='UTC')
+            timezone = self.bot.bot_config.get_user_setting(ctx.author.id, 'timezone', default=None) or 'UTC'
 
-        user_tz = Timezone.build(timezone, throw_error=False)
-
-        if not user_tz:
+        if not Timezone.is_valid_timezone(timezone):
             await ctx.send(f'Invalid timezone provided "{timezone}".. :slight_frown:')
             return
+
+        user_tz = Timezone.build(timezone)
 
         fuzzy_when = FuzzyTime.build(provided_when=when, use_timezone=user_tz)
         await ctx.send(f'Would add new reminder for `{fuzzy_when.resolved_time}` with ```\n{content}\n``` based on "{when}"')
@@ -289,11 +290,11 @@ class ReminderCog(BaseCog, name='reminder'):
         logger.info(f'cmd: when. when -> "{when}", use_tz: "{use_tz}"')
 
         if use_tz:
-            timezone = Timezone.build(use_tz, throw_error=False)
-            if not timezone:
+            if not Timezone.is_valid_timezone(use_tz):
                 await ctx.send(f'Sorry {ctx.author.mention}, "{use_tz}" does not appear to be a valid timezone')
                 return
 
+            timezone = Timezone.build(use_tz)
             fuz_time = FuzzyTime.build(provided_when=when.provided_when, created_time=datetime.now(timezone.timezone), use_timezone=timezone)
         else:
             fuz_time = when

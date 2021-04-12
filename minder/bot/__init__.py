@@ -15,7 +15,7 @@ from minder.cogs.base import BaseCog
 from minder.cogs.errors import ErrorHandlerCog
 from minder.bot.config import BotConfig
 from minder.errors import MinderBotError
-from minder.types import GuildType, MemberType, ChannelType
+from minder.common import GuildType, MemberType, ChannelType, ContextOrGuild
 
 logger = logging.getLogger(__name__)
 COG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '../cogs'))
@@ -42,9 +42,6 @@ class MinderBot(commands.Bot):
 
         do_echo = True if Config.SQLALCHEMY_ECHO else False
         self.sa_engine = create_engine(Config.SQLALCHEMY_URI, echo=do_echo)
-
-        from minder.db import Base
-        Base.metadata.create_all(self.sa_engine)
 
         self.scheduler = AsyncIOScheduler({'apscheduler.timezone': Config.USE_TIMEZONE})
 
@@ -83,8 +80,54 @@ class MinderBot(commands.Bot):
 
         logger.info('Finished running sync_init on all cogs')
 
-    async def lookup_channel(self, by_id: int = None, by_name: str = None, guild: GuildType = None,
-                             context: commands.Context = None, throw_error: bool = False) -> Optional[ChannelType]:
+    async def lookup_guild(self, by_id: int = None, by_name: str = None, throw_error: bool = False) -> Optional[discord.Guild]:
+        """
+        Attempt to lookup a ``discord.Guild`` by "id" or "name"
+
+        This method will attempt to find the desired guild using the provided selector ("id" or "name") using
+        the bot-provided ``get_guild`` method.
+
+        :param by_id: the guild ID to fetch
+        :param by_name: the guild name to fetch (will attempt to match by name, returning first match)
+        :param throw_error: if ``True``, a :py:exc:`MinderBotError` exception will be raised if no guild
+                            can be found. Otherwise, ``None`` will be returned.
+        """
+
+        if not by_id and not by_name:
+            raise MinderBotError('Neither "by_id" nor "by_name" were provided to lookup guild')
+
+        err_message = None
+        has_ex = None
+
+        if by_id:
+            gld = self.get_guild(by_id)
+            if gld:
+                return gld
+
+            err_message = f'Unable to find guild by ID "{by_id}" in #{len(self.guilds)} registered guilds'
+        else:
+            try:
+                return discord.utils.get(self.guilds, name=by_name)
+            except Exception as ex:
+                if isinstance(ex, discord.errors.NotFound):
+                    err_message = f'Cannot find guild named "{by_name}" in all #{len(self.guilds)} registered guilds'
+                else:
+                    err_message = f'General error attempting to lookup guild "{by_name}": {ex}'
+
+                has_ex = ex
+
+            if err_message:
+                gld_out = '\n -> '.join([f'{gld.name} ({gld.id})' for gld in self.guilds])
+                logger.warning(err_message)
+                logger.debug('All guilds:\n{gld_out}')
+
+                if throw_error:
+                    raise MinderBotError(err_message, base_exception=has_ex) from has_ex
+
+        return None
+
+    async def lookup_channel(self, by_id: int = None, by_name: str = None, context_or_guild: ContextOrGuild = None,
+                             throw_error: bool = False) -> Optional[ChannelType]:
         """
         Attempt to lookup a ``discord.TextChannel`` by "id" or "name"
 
@@ -93,8 +136,9 @@ class MinderBot(commands.Bot):
 
         :param by_id: lookup based by ID using provided integer
         :param by_name: lookup based on the provided username
-        :param guild: if provided, lookup channel using the provided :py:class:`GuildType` which can
-                      be a integer (interpreted as a Guild ID) or a ``discord.Guild`` instance
+        :param context_or_guild: either the provided ``commands.Context`` or ``discord.Guild`` instance will be used
+                                 to lookup the channel. if using a discord Context, the ``context.guild`` value will
+                                 be used.
         :param context: optional ``discord.ext.commands.Context`` instance (if available). this can be used in place
                         of a guild, if not otherwise provided and should be passed whenever available
         :param throw_error: if ``True``, a :py:exc:`MinderBotError` exception will be raised if no channel
@@ -104,34 +148,40 @@ class MinderBot(commands.Bot):
         if not by_id and not by_name:
             raise MinderBotError('Neither "by_id" nor "by_name" provided to lookup channel')
 
-        if not guild and context:
-            guild = context.guild
+        if context_or_guild:
+            guild = context_or_guild.guild if isinstance(context_or_guild, commands.Context) else context_or_guild
+        else:
+            guild = None
+
+        err_message = None
+        has_ex = None
 
         if by_id:
             try:
                 chan = await self.fetch_channel(by_id)
                 return chan
             except Exception as ex:
-                if isinstance(ex, discord.errors.NotFound):
-                    if guild:
-                        logger.info(f'Bot cannot find channel with ID "{by_id}". Attmempting to use provided "{guild.name}" guild')
+                has_ex = ex
+                if isinstance(ex, discord.errors.NotFound) and guild:
+                    logger.info(f'Bot cannot find channel with ID "{by_id}". Attmempting to use provided "{guild.name}" guild')
 
-                        # Will return "None" if the channel is not found anyway
-                        return guild.get_channel(by_id)
+                    # Will return "None" if the channel is not found anyway
+                    chan = guild.get_channel(by_id)
+
+                    if chan:
+                        return chan
 
                     err_message = f'No channel with ID "{by_id}" found using bot lookup'
                 else:
                     err_message = f'General error attempting to lookup channel with ID "{by_id}": {ex}'
 
                 if throw_error:
-                    raise MinderBotError(err_message, base_exception=ex, context=context) from ex
+                    ctx = context_or_guild if isinstance(context_or_guild, commands.Context) else None
+                    raise MinderBotError(err_message, base_exception=ex, context=ctx) from ex
 
                 logger.error(err_message)
 
-                return None
-
-        err_message = None
-        has_ex = None
+            return None
 
         try:
             chan = discord.utils.get(guild.channels if guild else self.get_all_channels(), name=by_name)
@@ -145,7 +195,8 @@ class MinderBot(commands.Bot):
             err_message = f'Unexpected error while attempting to lookup channel "{by_name}"'
 
         if throw_error:
-            raise MinderBotError(err_message, base_exception=has_ex, context=context) from has_ex
+            ctx = context_or_guild if isinstance(context_or_guild, commands.Context) else None
+            raise MinderBotError(err_message, base_exception=has_ex, context=ctx) from has_ex
 
         logger.error(err_message)
         return None
@@ -176,8 +227,7 @@ class MinderBot(commands.Bot):
 
         return None
 
-    @property
-    def all_cogs(self, use_dotted_path: bool = True) -> Mapping[str, commands.Cog]:
+    def get_all_cogs(self, use_dotted_path: bool = True) -> Mapping[str, commands.Cog]:
         if not use_dotted_path:
             return dict(self.cogs)
 

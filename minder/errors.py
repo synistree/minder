@@ -1,3 +1,4 @@
+import discord
 import logging
 import traceback
 
@@ -8,12 +9,17 @@ logger = logging.getLogger(__name__)
 
 
 def get_stacktrace(from_exception: Exception = None) -> str:
-    exc_info = traceback.format_exc(chain=True)
-
     if from_exception and hasattr(from_exception, '__traceback__'):
-        exc_info = traceback.format_exception(type(from_exception), from_exception, from_exception.__traceback__)
+        return ''.join(traceback.format_exception(type(from_exception), from_exception, from_exception.__traceback__))
 
-    return ''.join(exc_info)
+    return traceback.format_exc(chain=True)
+
+
+def build_stacktrace_embed(from_exception: Exception = None) -> discord.Embed:
+    exc_out = get_stacktrace(from_exception)
+    logger.debug(f'Reporting stack trace via embed:\n{exc_out}')
+
+    return discord.Embed(title='Stack Trace', description=f'```python\n{exc_out}\n```')
 
 
 class MinderError(Exception):
@@ -79,7 +85,7 @@ class MinderWebError(MinderError):
         logger.info(st_out)
 
     def as_dict(self) -> Mapping:
-        ret = self.payload.copy()
+        ret = dict(self.payload)
         ret['is_error'] = True
         ret['message'] = self.message
         return ret

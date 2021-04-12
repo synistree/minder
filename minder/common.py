@@ -2,19 +2,17 @@ from __future__ import annotations
 
 import discord
 import logging
-import pytz
 
-from dataclasses import dataclass, InitVar
+from dataclasses import dataclass
 from datetime import datetime
 from discord.ext import commands
-from typing import Union, Optional, TypeVar
+from typing import Union, Optional
 
 from minder.errors import MinderBotError
 
 logger = logging.getLogger(__name__)
 
 DateTimeType = Union[float, int, datetime]
-TimezoneType = Union[pytz.tzinfo.BaseTzInfo, TypeVar('Timezone'), str]
 GuildType = Union[discord.Guild, int]
 MemberType = Union[discord.User, discord.Member]
 ChannelType = Union[discord.TextChannel, discord.DMChannel]
@@ -26,12 +24,12 @@ class DiscordMember:
     id: int
     name: str
 
-    _guild: InitVar[discord.Guild] = None
-    _member: InitVar[MemberType] = None
+    _guild: Optional[discord.Guild] = None
+    _member: Optional[MemberType] = None
 
     @property
-    def mention(self) -> str:
-        return self._member.mention if self._member else self.name
+    def mention(self):
+        return str(self._member.mention) if self._member else self.name
 
     @property
     def guild(self) -> Optional[discord.Guild]:
@@ -48,22 +46,12 @@ class DiscordMember:
         return self._member
 
     @classmethod
-    def build(cls, id: int, name: Optional[str], context_or_guild: ContextOrGuild = None) -> DiscordMember:
-        guild, member = None, None
-
-        if not context_or_guild:
-            if not name:
-                raise MinderBotError(f'No guild/context provided when looking up user "{id}" with no provided username. Provide "name" explicitly')
-        else:
+    def build(cls, id: int, name: str, context_or_guild: ContextOrGuild = None) -> DiscordMember:
+        if context_or_guild:
             guild = context_or_guild if not isinstance(context_or_guild, commands.Context) else context_or_guild.guild
             member = cls.resolve(id, guild)
-
-            if not name:
-                if not member:
-                    ctx = context_or_guild if isinstance(context_or_guild, commands.Context) else None
-                    raise MinderBotError(f'Failed to resolve member ID {id} and no "name" provided.', context=ctx)
-
-                name = member.name
+        else:
+            guild, member = None, None
 
         return DiscordMember(id=id, name=name, _guild=guild, _member=member)
 
@@ -91,12 +79,12 @@ class DiscordChannel:
     name: str
 
     is_dm: Optional[bool] = None
-    _guild: InitVar[discord.Guild] = None
-    _channel: InitVar[ChannelType] = None
+    _guild: Optional[discord.Guild] = None
+    _channel: Optional[ChannelType] = None
 
     @property
     def mention(self) -> str:
-        return self._channel.mention if self._channel else self.name
+        return str(self._channel.mention) if self._channel else self.name
 
     @property
     def guild(self) -> Optional[discord.Guild]:

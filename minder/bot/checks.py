@@ -8,6 +8,6 @@ def is_admin():
         if not usr_cfg:
             return False
 
-        return usr_cfg.get('is_admin', False)
+        return True if usr_cfg.get('is_admin', None) else False
 
     return commands.check(predicate)

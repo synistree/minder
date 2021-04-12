@@ -2,107 +2,27 @@ from __future__ import annotations
 
 import dateparser
 import discord
-import os
-import os.path
+import emoji
 import pytz
 import logging
 
-try:
-    from emoji import EMOJI_ALIAS_UNICODE as EMOJIS
-except ImportError:
-    # Found the OSX package at least needs the "_ENGLISH" suffix
-    from emoji import EMOJI_ALIAS_UNICODE_ENGLISH as EMOJIS  # noqa: F401
-
+# Found the OSX package at least needs the "_ENGLISH" suffix
+if 'EMOJI_ALIAS_UNICODE' in dir(emoji):
+    EMOJIS = getattr(emoji, 'EMOJI_ALIAS_UNICODE')
+else:
+    EMOJIS = getattr(emoji, 'EMOJI_ALIAS_UNICODE_ENGLISH')
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from discord.ext import commands
-from typing import Union, Optional, Any, MutableMapping, Mapping
+from typing import Optional, Any, MutableMapping, Mapping, Union
+from pytz.exceptions import NonExistentTimeError, UnknownTimeZoneError, InvalidTimeError
 
-from minder.config import Config
-from minder.errors import MinderError, get_stacktrace
-from minder.types import DateTimeType, TimezoneType
+from minder.errors import MinderError
+from minder.common import DateTimeType
 
 logger = logging.getLogger(__name__)
-
-
-def validate_timezone(target_tz: str, throw_error: bool = False) -> bool:
-    """
-    Attempt to validate if the provided ``target_tz``
-
-    Use this method to check if any provided timezone string value is in fact valid
-
-    :param taret_tz: a timezone string such as ``America/Los_Angeles``
-    """
-
-    try:
-        pytz.timezone(target_tz)
-        return True
-    except pytz.exceptions.UnknownTimeZoneError as ex:
-        err_message = f'Invalid target timezone requested: "{target_tz}"'
-        if throw_error:
-            raise MinderError(err_message) from ex
-
-        logger.warning(err_message)
-
-        return False
-    except pytz.exceptions.NonExistentTimeError as ex:
-        err_message = f'Non-existent target timezone requested: "{target_tz}"'
-        if throw_error:
-            raise MinderError(err_message) from ex
-
-        logger.warning(err_message)
-        return False
-    except Exception as ex:
-        err_message = f'Generic error parsing timezone "{target_tz}": {ex}'
-
-        if throw_error:
-            raise MinderError(err_message) from ex
-
-        logger.warning(err_message)
-        return False
-    else:
-        err_message = f'Generic fall-through parsing timezone "{target_tz}" without an exception.'
-
-        if throw_error:
-            raise MinderError(err_message)
-
-        logger.warning(err_message)
-        return False
-
-
-def format_datetime(source: datetime, target: TimezoneType = None, throw_error: bool = True) -> datetime:
-    if not target:
-        target = Config.USE_TIMEZONE or 'UTC'
-
-    try:
-        target_tz = pytz.timezone(target)
-    except pytz.exceptions.UnknownTimeZoneError as ex:
-        err_message = f'Invalid target timezone requested: "{target}"'
-        if throw_error:
-            raise MinderError(err_message) from ex
-
-        logger.warning(err_message)
-        return source
-    except pytz.exceptions.NonExistentTimeError as ex:
-        err_message = f'Non-existent target timezone requested: "{target}"'
-        if throw_error:
-            raise MinderError(err_message) from ex
-
-        logger.warning(err_message)
-        return source
-
-    return source.astimezone(target_tz)
-
-
-def get_working_path(use_working_path: str = None) -> str:
-    working_path = os.path.expanduser(use_working_path or Config.WORKING_PATH)
-
-    if not os.path.exists(working_path):
-        logger.info(f'Creating new wrlibg path in "{working_path}"')
-        os.makedirs(working_path)
-
-    return working_path
+TimezoneType = Union[pytz.BaseTzInfo, 'Timezone', str]
 
 
 @dataclass
@@ -110,8 +30,19 @@ class Timezone:
     timezone_name: str
     timezone: pytz.BaseTzInfo
 
+    @classmethod
+    def get_tz_error_type(cls, exception: Exception) -> str:
+        if isinstance(exception, InvalidTimeError):
+            return 'Invalid timezone'
+        elif isinstance(exception, NonExistentTimeError):
+            return 'Non-existent timezone'
+        elif isinstance(exception, UnknownTimeZoneError):
+            return 'Unknown timezone'
+
+        return 'Generic'
+
     @property
-    def utc_offset(self) -> timedelta:
+    def utc_offset(self) -> Optional[timedelta]:
         utc_tz = pytz.timezone('UTC')
         dt_now = datetime.now(utc_tz)
 
@@ -132,44 +63,27 @@ class Timezone:
 
     @classmethod
     def is_valid_timezone(cls, timezone_name: str) -> bool:
-        if not cls.get_timezone(timezone_name, throw_error=False):
+        try:
+            cls.get_timezone(timezone_name)
+        except Exception:
             return False
 
         return True
 
     @classmethod
-    def get_timezone(cls, timezone: TimezoneType, throw_error: bool = True) -> Optional[pytz.tzinfo.BaseTzInfo]:
+    def get_timezone(cls, timezone_name: str) -> pytz.BaseTzInfo:
         try:
-            return pytz.timezone(timezone)
+            return pytz.timezone(timezone_name)
         except Exception as ex:
-            if isinstance(ex, pytz.exceptions.InvalidTimeError):
-                err_type = 'Invalid timezone'
-            elif isinstance(ex, pytz.exceptions.NonExistentTimeError):
-                err_type = 'Non-existent timezone'
-            else:
-                err_type = 'Generic'
-
-            err_message = f'{err_type} error parsing "{timezone}"'
-
-            if throw_error:
-                raise MinderError(err_message) from ex
-
-            logger.error(err_message)
-
-            return None
+            err_type = cls.get_tz_error_type(ex)
+            err_message = f'{err_type} error parsing "{timezone_name}"'
+            raise MinderError(err_message, base_exception=ex) from ex
 
     @classmethod
-    def build(cls, timezone_name: str = None, throw_error: bool = True) -> Optional[Timezone]:
+    def build(cls, timezone_name: str = None) -> Timezone:
         timezone_name = timezone_name or 'UTC'
-        tz = cls.get_timezone(timezone_name, throw_error=throw_error)
-        if tz:
-            return Timezone(timezone_name=timezone_name, timezone=tz)
-
-        if not throw_error:
-            logger.warning(f'Unable to build Timezone instance: Bad timezone name "{timezone_name}"')
-            return None
-
-        raise MinderError(f'Invalid timezone provided: "{timezone_name}"')
+        tz = cls.get_timezone(timezone_name)
+        return Timezone(timezone_name=timezone_name, timezone=tz)
 
     def as_dict(self) -> Mapping[str, Any]:
         return {'timezone_name': self.timezone_name, 'timezone': self.timezone}
@@ -182,7 +96,7 @@ class FuzzyTime:
     created_time: datetime = field(default_factory=datetime.now)
     resolved_time: datetime = field(init=False)
 
-    use_timezone: Timezone = field(default_factory=lambda value: Timezone.build(value))
+    use_timezone: Timezone = field(default_factory=Timezone.build)
 
     @property
     def created_timestamp(self) -> float:
@@ -230,12 +144,13 @@ class FuzzyTime:
     def build(cls, provided_when: str, created_time: DateTimeType = None,
               use_timezone: TimezoneType = None) -> FuzzyTime:
         if use_timezone:
-            if isinstance(use_timezone, pytz.tzinfo.BaseTzInfo):
-                timezone = use_timezone.zone
+            if isinstance(use_timezone, pytz.BaseTzInfo):
+                timezone = Timezone(timezone_name=use_timezone.zone, timezone=use_timezone)
             elif isinstance(use_timezone, str):
-                timezone = Timezone.build(use_timezone, throw_error=False)
-                if not timezone:
+                if not Timezone.is_valid_timezone(use_timezone):
                     raise MinderError(f'Invalid timezone provided: "{use_timezone}"')
+
+                timezone = Timezone.build(use_timezone)
             else:
                 timezone = use_timezone
         else:
@@ -258,13 +173,12 @@ class FuzzyTime:
 class TimezoneConverter(commands.Converter):
     async def convert(self, ctx: commands.Context, tz_name: str) -> Timezone:
         author = ctx.author.mention if ctx.author.guild else ctx.author.name
-        new_tz = Timezone.build(tz_name, throw_error=False)
 
-        if new_tz:
-            return new_tz
+        if not Timezone.is_valid_timezone(tz_name):
+            await ctx.send(f'Sorry {author}, invalid timezone "{tz_name}"')
+            raise commands.BadArgument(f'Invalid timezone name "{tz_name}" when attempting to convert to a timezone')
 
-        await ctx.send(f'Sorry {author}, invalid timezone "{tz_name}"')
-        raise commands.BadArgument(f'Invalid timezone name "{tz_name}" when attempting to convert to a timezone')
+        return Timezone.build(tz_name)
 
 
 class FuzzyTimeConverter(commands.Converter):
@@ -292,10 +206,3 @@ class FuzzyTimeConverter(commands.Converter):
             raise commands.BadArgument(f'Unable to parse fuzzy time for "{ctx.author.name}": {ex}') from ex
 
         return fuz_time
-
-
-def build_stacktrace_embed(from_exception: Exception = None) -> str:
-    exc_out = get_stacktrace(from_exception)
-    logger.debug(f'Reporting stack trace via embed:\n{exc_out}')
-
-    return discord.Embed(title='Stack Trace', description=f'```python\n{exc_out}\n```')

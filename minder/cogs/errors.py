@@ -1,12 +1,12 @@
 import discord
 import logging
-import traceback
 
 from discord.ext import commands
 
 from redisent.errors import RedisError
 
 from minder.cogs.base import BaseCog
+from minder.errors import get_stacktrace
 
 logger = logging.getLogger(__name__)
 
@@ -46,12 +46,8 @@ class ErrorHandlerCog(BaseCog, name='errors'):
 
         logger.error(f'[default on_command_error:{ctx.command}] Unhandled error from "{ctx.command}": {error}')
 
-        if hasattr(error, '__traceback__'):
-            exc_info = traceback.format_exception(type(error), error, error.__traceback__)
-        else:
-            exc_info = traceback.format_exc(chain=True)
-
-        logger.info(f'Traceback:\n{"".join(exc_info)}')
+        exc_info = get_stacktrace(error)
+        logger.info(f'Traceback:\n{exc_info}')
 
         if isinstance(error, commands.DisabledCommand):
             await ctx.send(f'Sorry {ctx.author.mention} but `{ctx.command}` has been disabled.')

@@ -8,7 +8,7 @@ from minder.bot.checks import is_admin
 logger = logging.getLogger(__name__)
 
 
-class BaseCog(commands.Cog, name='base'):
+class BaseCog(commands.Cog):
     bot: commands.Bot
 
     _subclasses: List[commands.Cog] = []
@@ -23,7 +23,7 @@ class BaseCog(commands.Cog, name='base'):
 
     @property
     def bot_ready(self) -> bool:
-        return self.bot and self.bot.init_done
+        return True if self.bot and self.bot.init_done else False
 
     async def check_ready_or_fail(self, ctx: commands.Context, send_response: bool = True) -> bool:
         if self.bot_ready:

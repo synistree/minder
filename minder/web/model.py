@@ -20,7 +20,7 @@ class SAModel(Model):
 db = SQLAlchemy(model_class=SAModel)
 
 
-class User(db.Model, UserMixin):
+class User(db.Model, UserMixin):  # type: ignore[name-defined]
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -37,8 +37,12 @@ class User(db.Model, UserMixin):
 
     @classmethod
     def validate_password(cls, raw_password: str, password_hash: str) -> bool:
-        return check_password_hash(password_hash, raw_password)
+        if check_password_hash(password_hash, raw_password):
+            return True
+
+        return False
 
     @classmethod
     def generate_password(cls, raw_password: str) -> str:
-        return generate_password_hash(raw_password)
+        new_pw: str = generate_password_hash(raw_password)
+        return new_pw
