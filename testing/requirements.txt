@@ -11,6 +11,8 @@ mock
 mypy
 coverage
 tox
+tox-envfile
+tox-travis
 pytest-flask-sqlalchemy
 redislite
 discord.py-stubs

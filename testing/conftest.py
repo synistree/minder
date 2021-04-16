@@ -1,11 +1,21 @@
+import os
 import discord
 import pytest
 import redislite.client
 
-from typing import List, Optional
+from typing import Optional
 
-from minder.web.app import create_app
-from minder.models import Reminder
+# The "ENV_PATH" environment variable needs to be set prior to pulling in the "minder.*" dependencies
+#
+# Generally, with tox, this will be covered by the "tox-envfile" plugin but for good measure adding
+# here as well.
+#
+# Finally all env files should point to the ".devdata.env" symlink in the root of the repository. This
+# symlink points to the "dot_env.example" file.
+os.environ['ENV_PATH'] = os.path.abspath(os.path.join(os.path.dirname(__file__), '../.devdata.env'))
+
+from minder.web.app import create_app  # noqa: E402
+from minder.models import Reminder  # noqa: E402
 
 pytest_plugins = ['pytest-flask-sqlalchemy']
 
