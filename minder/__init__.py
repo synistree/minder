@@ -4,7 +4,7 @@ import os.path
 
 from logging.config import dictConfig
 
-__version__ = '0.10.1'
+__version__ = '0.11.1'
 
 DEFAULT_LOG_LEVEL = os.environ.get('LOG_LEVEL', logging.INFO)
 LOG_LEVEL = logging.DEBUG if os.environ.get('DEBUG', False) else logging.INFO

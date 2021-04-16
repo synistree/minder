@@ -13,7 +13,7 @@ from flask_login import LoginManager
 from flask_moment import Moment
 from flask_pretty import Prettify
 
-from redisent.types import RedisType
+from redisent.common import RedisType
 from redisent.helpers import RedisentHelper
 
 from typing import Any, Mapping, Union

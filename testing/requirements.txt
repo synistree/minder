@@ -13,3 +13,4 @@ coverage
 tox
 pytest-flask-sqlalchemy
 redislite
+discord.py-stubs

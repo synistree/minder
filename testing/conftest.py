@@ -1,15 +1,15 @@
 import discord
 import pytest
-import redislite
+import redislite.client
 
-from typing import Tuple, Optional
+from typing import List, Optional
 
 from minder.web.app import create_app
 from minder.models import Reminder
 
 pytest_plugins = ['pytest-flask-sqlalchemy']
 
-tmp_redis = redislite.Redis()
+tmp_redis = redislite.client.Redis()
 
 
 @pytest.fixture(scope='function')
@@ -60,7 +60,6 @@ def client(app):
 class FakeGuild(discord.Guild):
     id: int = 98765
     name: str = 'pytest-server'
-    emojis: Tuple[discord.Emoji] = []
     owner_id: int = 12345
     icon: Optional[str] = None
 
@@ -119,7 +118,7 @@ def fake_text_channel(fake_guild):
 class FakeUser(discord.User):
     id: int = 23456
     name: str = 'pytest'
-    discriminator: str = 69584
+    discriminator: str = '69584'
     avatar: Optional[str] = None
     bot: bool = False
     system: bool = False
