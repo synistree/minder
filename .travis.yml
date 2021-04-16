@@ -1,0 +1,17 @@
+dist: focal
+
+notifications:
+  email:
+    on_success: change
+    on_failure: change
+
+sudo: false
+language: python
+python:
+  - "3.8"
+  - "3.9"
+
+install:
+  - pip install -U pip wheel tox-travis
+
+script: tox
