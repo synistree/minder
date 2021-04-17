@@ -38,6 +38,7 @@ class FlaskApp(Flask):
     def __init__(self, import_name: str, *args, hostname: str = None, port: str = None, use_reloader: bool = None,
                  overrides: Mapping[str, Any] = None, use_redis: RedisType = None, **kwargs) -> None:
         overrides = overrides or {}
+
         # Enforce setting "instance_relative_config" to True when setting up the Flask application
         kwargs['instance_relative_config'] = True
 
@@ -147,8 +148,9 @@ class FlaskApp(Flask):
         super().run(*args, **kwargs)
 
 
-def create_app(hostname: str = None, port: Union[int, str] = None, use_reloader: bool = None, overrides: Mapping[str, Any] = None, use_redis: RedisType = None) -> FlaskApp:
+def create_app(hostname: str = None, port: Union[int, str] = None, use_reloader: bool = None, overrides: Mapping[str, Any] = None,
+               use_redis: RedisType = None) -> FlaskApp:
     hostname = hostname or Config.FLASK_HOST
     port = str(port or Config.FLASK_PORT)
-    app = FlaskApp(__name__, hostname=hostname, port=port, use_reloader=use_reloader, overrides=overrides, use_redis=use_redis)
-    return app
+
+    return FlaskApp(__name__, hostname=hostname, port=port, use_reloader=use_reloader, overrides=overrides, use_redis=use_redis)

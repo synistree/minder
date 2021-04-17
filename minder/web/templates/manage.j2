@@ -1,0 +1,48 @@
+{% extends 'base.j2' %}
+
+{% block app_content %}
+<div class="row">
+  <div class="col col-md-8">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Minder Management</h5>
+        <h6 class="card-subtitle mb-2 text-muted">Bot and Web Backend Management</h6>
+        <p class="card-text">Current web and bot details here</p>
+      </div><!-- /card-body -->
+    </div><!-- /card -->
+  </div><!-- /col -->
+</div><!-- /row -->
+
+<div class="row">
+  <div class="col col-md-6">
+    <div class="card text-center">
+      <div class="card-body">
+        <h5 class="card-title">Bot Management</h5>
+        <h6 class="card-subtitle mb-2 text-muted">Current status and management options for Discord bot</h6>
+        <p class="card-text">
+          Bot Status Table here
+
+          More details about configuration options here as well.
+        </p><!-- /card-text -->
+      </div><!-- /card-body -->
+    </div><!-- /card -->
+  </div><!-- /col -->
+
+  <div class="col col-md-6">
+    <div class="card text-center">
+      <div class="card-body">
+        <h5 class="card-title">Web Management</h5>
+        <h6 class="card-subtitle mb-2 text-muted">Current status and management options for Flask web backend</h6>
+        <p class="card-text">
+          Flask Web Backend Status Table
+
+          More details on web interface and configuration management
+        </p><!-- /card-text -->
+      </div><!-- /card-body -->
+    </div><!-- /card -->
+  </div><!-- /col -->
+
+</div><!-- /row -->
+{% endblock %}
+
+{# vim: set ts=2 sw=2 smarttab autoindent expandtab ft=html: #}

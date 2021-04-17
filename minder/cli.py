@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 def register_app_cli(app):
     @app.cli.command('ipy-shell', help='IPython shell for working within the Flask context')
     def ipy_shell():
-        context = {}
-        context.update(app.make_shell_context())
-        IPython.embed(header='Welcome to the minder IPython shell', colors='linux', using='asyncio', local=context)
+        app.make_shell_context()
+        from minder.web.model import db, User  # noqa: F401
+        IPython.embed(header='Welcome to the minder IPython shell', colors='linux', using='asyncio')
 
 
 @click.group(name='minder', context_settings={'help_option_names': ['-h', '--help']})

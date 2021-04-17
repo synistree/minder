@@ -3,6 +3,7 @@ import discord
 import pytest
 import redislite.client
 
+from sqlalchemy.engine import make_url
 from typing import Optional
 
 # The "ENV_PATH" environment variable needs to be set prior to pulling in the "minder.*" dependencies
@@ -57,6 +58,10 @@ def db(app):
         yield db
         db.drop_all()
         db.session.commit()
+
+        eng_url = make_url(app.config['SQLALCHEMY_DATABASE_URI'])
+        db_url = db.engine.url
+        assert eng_url == db.engine.url, f'Config SQLALchemy URL does not match config. Expected "{eng_url}", found "{db_url}"'
 
 
 @pytest.fixture

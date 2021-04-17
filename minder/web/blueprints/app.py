@@ -17,7 +17,6 @@ def login():
 
     from minder.web.model import User
 
-    form_data = request.form
     form = LoginForm(request.form)
 
     if request.method == 'POST' and form.validate_on_submit():
@@ -46,6 +45,13 @@ def login():
 @login_required
 def overview():
     return render_template('overview.j2')
+
+
+
+@app_bp.route('/manage', methods=['GET'])
+@login_required
+def manage():
+    return render_template('manage.j2', title='Manage Minder')
 
 
 @app_bp.route('/success', methods=['GET'])
