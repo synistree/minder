@@ -44,6 +44,7 @@ class MinderBot(commands.Bot):
         self.sa_engine = create_engine(Config.SQLALCHEMY_URI, echo=do_echo)
 
         self.scheduler = AsyncIOScheduler({'apscheduler.timezone': Config.USE_TIMEZONE})
+        self.scheduler.start()
 
         if Config.BOT_CONFIG_YAML:
             bot_yaml_path = Config.BOT_CONFIG_YAML
@@ -65,7 +66,7 @@ class MinderBot(commands.Bot):
         self.is_ready = True
         logger.info('Bot initialization complete.')
 
-        self.watcher = Watcher(self, path='minder/cogs', debug=True)
+        self.watcher = Watcher(self, path='src/minder/cogs', debug=True)
         # Do not actually start watcher, only used for resolving cog names and paths right now
         # await self.watcher.start()
 
@@ -119,7 +120,7 @@ class MinderBot(commands.Bot):
             if err_message:
                 gld_out = '\n -> '.join([f'{gld.name} ({gld.id})' for gld in self.guilds])
                 logger.warning(err_message)
-                logger.debug('All guilds:\n{gld_out}')
+                logger.debug(f'All guilds:\n{gld_out}')
 
                 if throw_error:
                     raise MinderBotError(err_message, base_exception=has_ex) from has_ex
@@ -290,7 +291,8 @@ def build_bot(use_token: str = None, start_bot: bool = True, **bot_kwargs) -> Mi
     bot.add_cog(ErrorHandlerCog(bot))
 
     for cog_cls in BaseCog._subclasses:
-        logger.info(f'Registering cog "{cog_cls.__name__}"')
+        cls_name = cog_cls.__class__.__qualname__
+        logger.info(f'Registering cog "{cls_name}"')
         bot.add_cog(cog_cls(bot))
 
     if start_bot:

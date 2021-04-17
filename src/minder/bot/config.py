@@ -17,7 +17,7 @@ class BotConfig:
     """
     Class for loading user and guild configuration for the bot to use
 
-    This class is reponsible for loading the default guild behavior, registering static users and otherwise
+    This class is responsible for loading the default guild behavior, registering static users and otherwise
     providing per-guild configuration details like which channel the bot should dump messages into as well as
     if errors should included traceback details also
     """
@@ -165,6 +165,45 @@ class BotConfig:
 
     @classmethod
     def load(cls, yaml_file: str) -> BotConfig:
+        """
+        Parses Bot config settings from provided YAML file
+
+        Example YAML Config Reference:
+
+        .. code-block::
+           :language yaml:
+
+           defaults:
+              admins: [1234567890]         # Bot-wide admin member IDs
+              extended_errors: False        # Include traceback in errors
+              ignore_other_guilds: True     # Indicates that guilds not specified here are otherwise ignored
+
+            users:
+              1234567890: # Owner user
+                name: 'minder admin'
+                is_admin: True          # Indicates if the user is a Web UI admin
+
+              1111111111: # "My Guild" admin
+                name: 'guild admin'
+                is_admin: False
+
+              9876543210: # "regular user"
+                name: 'user'
+                is_admin: False
+
+            guilds:
+              5678912345:
+                name: 'My Guild'
+                admins: [111111111]    # Guild-only admins
+                bot_channel: 333333333 # Bot admin channel
+                extended_errors: True   # Enable extended error output
+
+              8765432134:
+                name: 'Other server'
+                admins: []              # No guild admins
+                bot_channel: 444444444  # "#bot-admin"
+        """
+
         if not os.path.exists(yaml_file):
             raise MinderError(f'No such bot config YAML file: "{yaml_file}"')
 

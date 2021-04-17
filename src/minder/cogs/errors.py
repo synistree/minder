@@ -14,9 +14,6 @@ logger = logging.getLogger(__name__)
 class ErrorHandlerCog(BaseCog, name='errors'):
     IGNORED_EXCEPTIONS = (commands.CommandNotFound,)
 
-    def __init__(self, bot: commands.Bot, *args, **kwargs) -> None:
-        super().__init__(bot, *args, **kwargs)
-
     @commands.Cog.listener()
     async def on_command_error(self, ctx: commands.Context, error: commands.CommandError) -> None:
         """

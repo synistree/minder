@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import discord
 import logging
 
 from discord.ext import commands
 from pprint import pformat
 
-from minder.bot.checks import is_admin
+from minder.bot.checks import is_admin, in_dm, in_admin_channel
 from minder.cogs.base import BaseCog
 from minder.settings import SettingsManager
 from minder.errors import build_stacktrace_embed
@@ -15,8 +17,9 @@ logger = logging.getLogger(__name__)
 class SettingsCog(BaseCog, name='settings'):
     manager: SettingsManager
 
-    def __init__(self, bot: commands.Bot, *args, **kwargs) -> None:
+    def __init__(self, bot, *args, **kwargs) -> None:
         super().__init__(bot, *args, **kwargs)
+
         self.manager = SettingsManager(self.bot.redis_helper)
 
     @commands.dm_only()
@@ -75,8 +78,8 @@ class SettingsCog(BaseCog, name='settings'):
 
         await ctx.send(f'**ALL** user config:```python\n{pformat(self.bot.bot_config.users, indent=2)}\n```')
 
-    @commands.dm_only()
     @commands.check_any(commands.is_owner(), is_admin())
+    @commands.check_any(in_dm(), in_admin_channel())
     @commands.group(name='cogs')
     async def cogs(self, ctx: commands.Context) -> None:
         if not await self.check_ready_or_fail(ctx):

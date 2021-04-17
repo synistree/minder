@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 
 from discord.ext import commands
@@ -9,13 +11,13 @@ logger = logging.getLogger(__name__)
 
 
 class BaseCog(commands.Cog):
-    bot: commands.Bot
+    bot: 'MinderBot'
 
     _subclasses: List[commands.Cog] = []
 
-    def __init__(self, bot: commands.Bot, *args, **kwargs) -> None:
-        super().__init__()
+    def __init__(self, bot: 'MinderBot', *args, **kwargs) -> None:
         self.bot = bot
+        super().__init__()
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)

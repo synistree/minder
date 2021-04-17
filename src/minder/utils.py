@@ -172,7 +172,7 @@ class FuzzyTime:
 
 class TimezoneConverter(commands.Converter):
     async def convert(self, ctx: commands.Context, tz_name: str) -> Timezone:
-        author = ctx.author.mention if ctx.author.guild else ctx.author.name
+        author = ctx.author.mention if isinstance(ctx.author, discord.Member) else ctx.author.name
 
         if not Timezone.is_valid_timezone(tz_name):
             await ctx.send(f'Sorry {author}, invalid timezone "{tz_name}"')

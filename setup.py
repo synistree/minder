@@ -16,12 +16,6 @@ with open(req_path, 'rt') as f:
 
 
 setuptools.setup(
-    name='minder',
-    packages=setuptools.find_namespace_packages(where='.'),
-    url='https://github.com/jhannah01/minder',
-    author='Jon Hannah',
-    author_email='jon@synistree.com',
-    description='Simple discord.py bot for helping with remembering things',
     include_package_data=True,
     package_data={
         'minder': ['py.typed']

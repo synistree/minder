@@ -1,10 +1,13 @@
 import os
 import discord
 import pytest
+import logging
 import redislite.client
 
 from sqlalchemy.engine import make_url
 from typing import Optional
+
+logging.basicConfig(level=logging.WARNING)
 
 # The "ENV_PATH" environment variable needs to be set prior to pulling in the "minder.*" dependencies
 #

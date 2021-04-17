@@ -15,7 +15,7 @@ class SlashCog(BaseCog, name='slash'):
     async def _mrow(self, ctx: SlashContext):
         # embed = discord.Embed(title='MROW', description=f':cat: {ctx.author.mention} :smile:')
         # await ctx.send(content=f'mrow back at you {ctx.author.name}', embeds=[embed])
-        cmds = await utils.manage_commands.get_all_commands(self.bot.client.id, bot_token=Config.BOT_TOKEN)
+        cmds = await utils.manage_commands.get_all_commands(self.bot.user.id, bot_token=Config.BOT_TOKEN)
         logger.info(f'Commands:\n{cmds}')
         await ctx.send(content=f'Commands:\n```\n{cmds}\n```')
 

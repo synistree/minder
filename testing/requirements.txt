@@ -15,4 +15,5 @@ tox-envfile
 tox-travis
 pytest-flask-sqlalchemy
 redislite
+types-pytz
 discord.py-stubs

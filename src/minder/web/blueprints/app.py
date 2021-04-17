@@ -46,8 +46,6 @@ def login():
 def overview():
     return render_template('overview.j2')
 
-
-
 @app_bp.route('/manage', methods=['GET'])
 @login_required
 def manage():

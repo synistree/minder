@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from discord.ext import commands
-from typing import Union, Optional
+from typing import Union, Optional, Mapping
 
 from minder.errors import MinderBotError
 
@@ -17,6 +17,11 @@ GuildType = Union[discord.Guild, int]
 MemberType = Union[discord.User, discord.Member]
 ChannelType = Union[discord.TextChannel, discord.DMChannel]
 ContextOrGuild = Union[commands.Context, discord.Guild]
+
+ChannelType = Union[discord.TextChannel, discord.DMChannel]
+MemberType = Union[discord.User, discord.Member]
+AnyChannelType = Union[ChannelType, Mapping[str, str]]
+AnyMemberType = Union[MemberType, Mapping[str, str]]
 
 
 @dataclass
@@ -91,7 +96,7 @@ class DiscordChannel:
         if self._guild:
             return self._guild
 
-        if self._channel and self._channel.guild:
+        if self._channel and not isinstance(self._channel, discord.DMChannel):
             return self._channel.guild
 
         return None

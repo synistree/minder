@@ -2,79 +2,25 @@ from __future__ import annotations
 
 import discord
 import humanize
-import os.path
 import logging
-import yaml
 
-from dataclasses import dataclass, field
 from datetime import datetime
 from redisent.models import RedisEntry
-from typing import Union, Optional, Mapping, MutableMapping, Any
+from typing import Union, Optional
 
+from minder.common import AnyMemberType, AnyChannelType, MemberType, ChannelType
 from minder.errors import MinderError
 from minder.utils import FuzzyTime, Timezone
 
+from dataclasses import dataclass, field
+
 logger = logging.getLogger(__name__)
-
-ChannelType = Union[discord.TextChannel, discord.DMChannel]
-MemberType = Union[discord.User, discord.Member]
-AnyChannelType = Union[ChannelType, Mapping[str, str]]
-AnyMemberType = Union[MemberType, Mapping[str, str]]
-
-
-@dataclass
-class UserSettings(RedisEntry):
-    redis_id: str = 'user_settings'
-
-    guild_id: Optional[int] = field(default=None)
-    member_id: int = field(default_factory=int)
-
-    settings: MutableMapping[str, Any] = field(default_factory=dict)
-
-    def __post_init__(self) -> None:
-        self.redis_name = str(self.member_id)
-
-    def set_value(self, name: str, value: Any) -> bool:
-        has_value = True if self.has_setting(name) else False
-        self.settings[name] = value
-        return has_value
-
-    def has_setting(self, name: str) -> bool:
-        return name in self.settings
-
-    def get_value(self, name: str, throw_error: bool = True, **kwargs) -> Optional[Any]:
-        if self.has_setting(name):
-            return self.settings[name]
-
-        if 'default' in kwargs:
-            return kwargs['default']
-
-        if throw_error:
-            raise MinderError(f'Invalid user setting value requested: "{name}"')
-
-        return None
-
-    @classmethod
-    def from_yaml(cls, yaml_file: str) -> UserSettings:
-        yaml_file = os.path.abspath(os.path.expanduser(yaml_file))
-
-        if not os.path.exists(yaml_file):
-            raise MinderError(f'Unable to find user settings file "{yaml_file}"')
-
-        try:
-            with open(yaml_file, 'rt') as f:
-                yaml_cfg = yaml.safe_load(f)
-        except Exception as ex:
-            raise MinderError(f'Failure parsing user settings from "{yaml_file}": {ex}') from ex
-
-        member_id = yaml_cfg['member_id']
-        guild_id = yaml_cfg.get('guild_id', None)
-        return UserSettings(guild_id=guild_id, member_id=member_id, settings=yaml_cfg['settings'])
 
 
 @dataclass
 class Reminder(RedisEntry):
     redis_id: str = 'reminders'
+
     member_id: int = field(default_factory=int)
     member_name: str = field(default_factory=str)
 
@@ -124,13 +70,10 @@ class Reminder(RedisEntry):
             logger.warning(f'No timezone setting found for "{self.redis_name}". Setting to "UTC"')
             self.timezone_name = 'UTC'
 
-        if not self.redis_name:
-            # TODO: Investigate if this happens and if there are better stragegies to deal with those cases.
-            #
-            # This did introduce a subtle bug where changing the member_id value and storing the entry resulted
-            # in a mismatch between the object "redis_name" value and the real one in Redis..
+        if not self.redis_id:
+            self.redis_id = 'reminders'
 
-            logger.warning(f'Updating "redis_name" since it appears to be unset. This should only happen once at most. (original name: {self.redis_name})')
+        if not self.redis_name:
             self.redis_name = f'{self.member_id}:{self.trigger_ts}'
 
         # TODO: This really does not need to be stored in Redis. Instead we should only store the timestamp and use the

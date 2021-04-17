@@ -65,7 +65,6 @@ class ReminderCog(BaseCog, name='reminder'):
     async def _sync_init(self) -> None:
         logger.info('Starting scheduler in Reminder cog and processing and pending Reminders')
 
-        self.bot.scheduler.start()
         await self._process_reminders()
 
     async def _process_reminders(self) -> None:
@@ -287,6 +286,8 @@ class ReminderCog(BaseCog, name='reminder'):
 
     @commands.command(name='when')
     async def when(self, ctx: commands.Context, when: FuzzyTimeConverter, *, use_tz: Optional[str] = None):
+        when = cast(FuzzyTime, when)
+
         logger.info(f'cmd: when. when -> "{when}", use_tz: "{use_tz}"')
 
         if use_tz:
