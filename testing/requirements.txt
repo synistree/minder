@@ -17,3 +17,4 @@ pytest-flask-sqlalchemy
 redislite
 types-pytz
 discord.py-stubs
+sqlalchemy-stubs

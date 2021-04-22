@@ -4,6 +4,7 @@ import logging
 from discord.ext import commands
 
 from redisent.errors import RedisError
+from typing import cast
 
 from minder.cogs.base import BaseCog
 from minder.errors import get_stacktrace
@@ -30,11 +31,12 @@ class ErrorHandlerCog(BaseCog, name='errors'):
             # Let the existing on_error handler deal with this.
             return
 
-        cog = ctx.cog
+        # TODO: Clean this up.
 
-        if cog and cog._get_overridden_method(cog.cog_command_error) is not None:
-            # Let the existing cog-related on_command_error handler deal with this.
-            return
+        # cog: commands.Cog = ctx.cog
+        # if cog and cog._get_overridden_method(cog.cog_command_error) is not None:
+        #     # Let the existing cog-related on_command_error handler deal with this.
+        #     return
 
         error = getattr(error, 'original', error)
         if isinstance(error, self.IGNORED_EXCEPTIONS):
@@ -55,7 +57,8 @@ class ErrorHandlerCog(BaseCog, name='errors'):
             except discord.HTTPException:
                 pass
         elif isinstance(error, commands.errors.PrivateMessageOnly):
-            logger.error(f'Received dm-only command for {ctx.command} in {ctx.channel.name} from {ctx.author.name}')
+            chan_name = 'DM' if isinstance(ctx.channel, discord.DMChannel) else ctx.channel.name
+            logger.error(f'Received dm-only command for {ctx.command} in {chan_name} from {ctx.author.name}')
             await ctx.send(f'Sorry {ctx.author.mention}, {ctx.command} can only be used in DMs')
         elif isinstance(error, commands.BadArgument):
             if ctx.command.qualified_name == 'tag list':

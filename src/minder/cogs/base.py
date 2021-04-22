@@ -1,26 +1,23 @@
 from __future__ import annotations
 
+import discord
 import logging
 
 from discord.ext import commands
-from typing import List
-
-from minder.bot.checks import is_admin
+from typing import List, Type
 
 logger = logging.getLogger(__name__)
 
 
 class BaseCog(commands.Cog):
-    bot: 'MinderBot'
+    _subclasses: List[Type[BaseCog]] = []
 
-    _subclasses: List[commands.Cog] = []
-
-    def __init__(self, bot: 'MinderBot', *args, **kwargs) -> None:
+    def __init__(self, bot, *args, **kwargs) -> None:
         self.bot = bot
         super().__init__()
 
-    def __init_subclass__(cls, **kwargs) -> None:
-        super().__init_subclass__(**kwargs)
+    @classmethod
+    def __init_subclass__(cls) -> None:
         cls._subclasses.append(cls)
 
     @property
@@ -32,7 +29,7 @@ class BaseCog(commands.Cog):
             return True
 
         if send_response:
-            author = ctx.author.mention if ctx.author.guild else ctx.author.name
+            author = ctx.author.mention if isinstance(ctx.author, discord.Member) and ctx.author.guild else ctx.author.name
             await ctx.send(f'Sorry {author}, bot is not done loading yet.. Try again in a few moments. :thinking_face:')
 
         return False
