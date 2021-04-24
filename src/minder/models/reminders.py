@@ -66,12 +66,11 @@ class Reminder(RedisEntry):
         return self.trigger_dt < dt_now
 
     def __post_init__(self) -> None:
+        self.redis_id = 'reminders'
+
         if not self.timezone_name:
             logger.warning(f'No timezone setting found for "{self.redis_name}". Setting to "UTC"')
             self.timezone_name = 'UTC'
-
-        if not self.redis_id:
-            self.redis_id = 'reminders'
 
         if not self.redis_name:
             self.redis_name = f'{self.member_id}:{self.trigger_ts}'
