@@ -1,0 +1,2 @@
+recursive-include src/minder/web/templates *.j2 *.html
+recursive-include src/minder/web/static *.*
