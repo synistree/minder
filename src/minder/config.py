@@ -48,6 +48,7 @@ class Config:
     SQLALCHEMY_ECHO: bool = _load_from_environ('SQLALCHEMY_ECHO', False)
     DEFAULT_CHECK_INTERVAL: int = _load_from_environ('DEFAULT_CHECK_INTERVAL', 10)
     SYNC_SLASH_COMMANDS: bool = _load_from_environ('SYNC_SLASH_COMMANDS', True)
+    EXPLAIN_TEMPLATE_LOADING: bool = _load_from_environ('EXPLAIN_TEMPLATE_LOADING', False)
 
     # Required Private Values
     BOT_TOKEN: str = _load_from_environ('BOT_TOKEN', None)

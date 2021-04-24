@@ -55,6 +55,7 @@ class FlaskApp(Flask):
         self.config.from_object('minder.config.Config')
 
         self.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+        self.config['EXPLAIN_TEMPLATE_LOADING'] = Config.EXPLAIN_TEMPLATE_LOADING
 
         if overrides:
             for o_key, o_val in overrides.items():
