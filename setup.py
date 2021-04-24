@@ -1,6 +1,8 @@
 import os.path
 import setuptools
 
+with open('README.md', 'rt') as f:
+    readme_contents = f.read()
 
 install_reqs = []
 req_path = os.path.join(os.path.dirname(__file__), 'requirements.txt')
@@ -19,6 +21,8 @@ setuptools.setup(
     package_data={
         'minder': ['py.typed']
     },
+    long_description=readme_contents,
+    long_description_content_type='text/markdown',
     install_requires=install_reqs,
     entry_points={
         'console_scripts': ['minder=minder.cli:run_cli']

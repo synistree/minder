@@ -6,7 +6,8 @@ minder Discord Reminder Bot
    :caption: Contents:
    :glob:
 
-   pages/**
+   Introduction <pages/intro>
+   User Guide <pages/guide>
 
 
 Indices and tables
