@@ -12,6 +12,7 @@ python:
   - "3.9"
 
 install:
-  - pip --use-feature=in-tree-build install -U pip build wheel tox-travis
+  - python3 -m pip install -U pip
+  - python3 -m pip install -U build wheel tox-travis
 
 script: tox
