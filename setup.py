@@ -16,12 +16,14 @@ with open(req_path, 'rt') as f:
 
 
 setuptools.setup(
-    include_package_data=True,
     package_data={
         'minder': ['py.typed']
     },
     install_requires=install_reqs,
     entry_points={
         'console_scripts': ['minder=minder.cli:run_cli']
-    }
+    },
+    package_dir={'': 'src'},
+    packages=setuptools.find_packages(where='src'),
+    include_package_data=True
 )

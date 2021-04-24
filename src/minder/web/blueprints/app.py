@@ -44,7 +44,8 @@ def login():
 @app_bp.route('/')
 @login_required
 def overview():
-    return render_template('overview.j2')
+    return render_template('overview.j2', title='Welcome to Minder Web UI')
+
 
 @app_bp.route('/manage', methods=['GET'])
 @login_required

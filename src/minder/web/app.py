@@ -75,11 +75,10 @@ class FlaskApp(Flask):
         self.extensions['bootstrap']['cdns']['jquery'] = WebCDN('//cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/')
 
         # Iterate through each blueprint and register it with the application
-        from minder.web.blueprints.app import app_bp
-        from minder.web.blueprints.api import api_bp
+        from minder.web.blueprints import all_blueprints
 
-        self.register_blueprint(app_bp)
-        self.register_blueprint(api_bp)
+        for bp in all_blueprints:
+            self.register_blueprint(bp)
 
         # Similarly, replicates the functionality of the "error_handler" decorator
         # This is used to automatically redirect to "/login" if the user is not already
@@ -139,7 +138,7 @@ class FlaskApp(Flask):
 
     def run(self, *args, **kwargs) -> None:
         """
-        Wraps ``Flask.run`` to inject the correct value for ``use_reloader``, ``host`` and ``port``
+        Wraps :py:func:`Flask.run` to inject the correct values for ``use_reloader``, ``host`` and ``port``
         """
 
         kwargs['use_reloader'] = self._use_reloader
@@ -151,6 +150,18 @@ class FlaskApp(Flask):
 
 def create_app(hostname: str = None, port: Union[int, str] = None, use_reloader: bool = None, overrides: Mapping[str, Any] = None,
                use_redis: RedisType = None) -> FlaskApp:
+    """
+    Create custom Flask application using subclassed :py:cls:`FlaskApp` implementation
+
+    :param hostname: IP/hostname to listen on (use ``0.0.0.0`` for any IP, default is :py:attr:`Config.FLASK_HOST`)
+    :param port: specifies which TCP port to listen on (the default is :py:attr:`Config.FLASK_PORT`)
+    :param use_reloader: if provided, the Flask runner will watch the source files and restart if anything changes (note, this has
+                         been known to cause issues on Darwin/OSX if enabled). If not provided, :py:attr:`Config.ENABLE_AUTORELOAD`
+                         is used
+    :param overrides: optional mapping of config values to override
+    :param use_redis: optionally override the Redis connection to provide to :py:cls:`RedisentHelper`
+    """
+
     hostname = hostname or Config.FLASK_HOST
     port = str(port or Config.FLASK_PORT)
 
