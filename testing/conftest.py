@@ -7,8 +7,6 @@ import redislite.client
 from sqlalchemy.engine import make_url
 from typing import Optional
 
-logging.basicConfig(level=logging.WARNING)
-
 # The "ENV_PATH" environment variable needs to be set prior to pulling in the "minder.*" dependencies
 #
 # Generally, with tox, this will be covered by the "tox-envfile" plugin but for good measure adding
@@ -26,7 +24,7 @@ pytest_plugins = ['pytest-flask-sqlalchemy']
 tmp_redis = redislite.client.Redis()
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture
 def session(db, request):
     connection = db.engine.connect()
     transaction = connection.begin()
@@ -45,7 +43,7 @@ def session(db, request):
     return session
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture
 def app(request):
     cfg_override = {'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:', 'TESTING': True,
                     'WTF_CSRF_ENABLED': False}
@@ -71,6 +69,12 @@ def db(app):
 def client(app):
     with app.test_client() as client:
         yield client
+
+
+@pytest.fixture
+def cli_runner(app):
+    return app.test_cli_runner()
+
 
 # Discord-related fixtures for faking data models
 
@@ -175,3 +179,9 @@ def fake_channel_reminder(fake_member, fake_text_channel):
 @pytest.fixture
 def fake_dm_reminder(fake_member, fake_dm_channel):
     return Reminder.build(trigger_time='in 5 minutes', member=fake_member, content='pytest test DM reminder', channel=fake_dm_channel)
+
+
+# Flake8 errors in the logs during testing are really not helpful and very verbose
+# same with SQLAlchemy engine entries
+for mod_cls in ['flake8.plugins.manager', 'sqlalchemy.engine.Engine']:
+    logging.getLogger(mod_cls).setLevel(logging.WARNING)
