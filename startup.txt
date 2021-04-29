@@ -1,2 +1,7 @@
 source .venv/bin/activate
+python3 -mpip install -U pip
+pip install -U wheel
+pip install -r requirements.txt
+pip install .
+
 minder --debug run-web
