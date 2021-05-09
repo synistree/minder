@@ -4,13 +4,16 @@ import discord
 import logging
 import humanize
 
+import discord.ext.menus as menus  # type: ignore
+
 from datetime import datetime
-from discord.ext import commands, menus
+from discord.ext import commands
 from discord_slash import cog_ext, SlashContext
 from typing import List, Optional, cast
 
 from minder.bot.checks import is_admin
 from minder.cogs.base import BaseCog
+from minder.common import ChannelType
 from minder.errors import build_stacktrace_embed
 from minder.models import Reminder
 from minder.utils import FuzzyTimeConverter, Timezone, FuzzyTime, EMOJIS
@@ -35,8 +38,9 @@ class ReminderMenu(menus.Menu):
         self.reminder = reminder
         self.header = header or 'Keep or purge this reminder?'
 
-    async def send_initial_message(self, ctx: commands.Context, channel: discord.abc.Messageable) -> discord.Message:
-        return await channel.send(self.header, embed=self.reminder.as_markdown(author=ctx.author, channel=channel, as_embed=True))
+    async def send_initial_message(self, ctx: commands.Context, channel: ChannelType) -> discord.Message:
+        rem_md = cast(discord.Embed, self.reminder.as_markdown(author=ctx.author, channel=channel, as_embed=True))
+        return await channel.send(self.header, embed=rem_md)
 
     @menus.button(KEEP_EMOJI)
     async def on_keep(self, payload) -> None:
@@ -193,9 +197,11 @@ class ReminderCog(BaseCog, name='reminder'):
 
         reminders = self._get_reminders(include_complete=False)
 
-        msg_out = f'Hey {ctx.author.mention}, found #{len(reminders)} pending reminders:'
+        author_name = ctx.author.mention if isinstance(ctx.channel, discord.channel.TextChannel) else ctx.author.name
+
+        msg_out = f'Hey {author_name}, found #{len(reminders)} pending reminders:'
         for rem in reminders:
-            msg_out += f'\n{rem.as_markdown(ctx.author, ctx.channel)}'
+            msg_out += f'\n{rem.as_markdown(ctx.author, ctx.channel)}'  # type: ignore[arg-type]
 
         await ctx.send(msg_out)
 
@@ -206,7 +212,7 @@ class ReminderCog(BaseCog, name='reminder'):
 
         msg_out = f'Hey {ctx.author.mention}, found #{len(reminders)} reminders (**ALL** reminders):'
         for rem in reminders:
-            msg_out += f'\n{rem.as_markdown(ctx.author, ctx.channel)}'
+            msg_out += f'\n{rem.as_markdown(ctx.author, ctx.channel)}'  # type: ignore[arg-type]
 
         await ctx.send(msg_out)
 
@@ -231,10 +237,10 @@ class ReminderCog(BaseCog, name='reminder'):
     @reminders.command(name='add')
     async def add_reminder(self, ctx: commands.Context, fuzzy_when: FuzzyTimeConverter, *, content: str) -> None:
         dt_now = datetime.now()
-        reminder = Reminder.build(fuzzy_when, member=ctx.author, channel=ctx.channel, content=content)
+        reminder = Reminder.build(fuzzy_when, member=ctx.author, channel=ctx.channel, content=content)  # type: ignore[arg-type]
 
         reminder.store(self.bot.redis_helper)
-        reminder_md = reminder.as_markdown(ctx.author, ctx.channel, as_embed=True)
+        reminder_md = cast(discord.Embed, reminder.as_markdown(ctx.author, ctx.channel, as_embed=True))  # type: ignore[arg-type]
         logger.info(f'Successfully added new reminder for "{ctx.author.name}"')
         logger.debug(f'Reminder:\n{reminder.dump()}')
 
@@ -258,7 +264,7 @@ class ReminderCog(BaseCog, name='reminder'):
         if for_member:
             msg_out += f' for "{for_member.name}" (ID: "{for_member.id}")'
 
-        logger.info(f'{msg_out}. Requested in "{ctx.channel.name}" by "#{ctx.author.name}" on "{ctx.guild.name}"')
+        logger.info(f'{msg_out}. Requested in "{ctx.channel}" by "#{ctx.author.name}" on "{ctx.guild.name if ctx.guild else "None"}"')
         cnt = 0
 
         for rem in reminders:
@@ -286,9 +292,9 @@ class ReminderCog(BaseCog, name='reminder'):
 
     @commands.command(name='when')
     async def when(self, ctx: commands.Context, when: FuzzyTimeConverter, *, use_tz: Optional[str] = None):
-        when = cast(FuzzyTime, when)
-
         logger.info(f'cmd: when. when -> "{when}", use_tz: "{use_tz}"')
+
+        assert isinstance(when, FuzzyTime)
 
         if use_tz:
             if not Timezone.is_valid_timezone(use_tz):
@@ -296,11 +302,11 @@ class ReminderCog(BaseCog, name='reminder'):
                 return
 
             timezone = Timezone.build(use_tz)
-            fuz_time = FuzzyTime.build(provided_when=when.provided_when, created_time=datetime.now(timezone.timezone), use_timezone=timezone)
+            fuz_tz = FuzzyTime.build(provided_when=when.provided_when, created_time=datetime.now(timezone.timezone), use_timezone=timezone)
         else:
-            fuz_time = when
+            fuz_tz = cast(FuzzyTime, when)
 
-        await ctx.send(f'Resolved `{when}` -> ```\n{fuz_time} (`{fuz_time.resolved_time}`)\n```\n> use_tz: `{use_tz}`')
+        await ctx.send(f'Resolved `{when}` -> ```\n{fuz_tz} (`{fuz_tz.resolved_time}`)\n```\n> use_tz: `{use_tz}`')
 
     @commands.guild_only()
     @reminders.command(name='lookup')

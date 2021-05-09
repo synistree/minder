@@ -1,5 +1,3 @@
-import flask
-
 from minder.cli import add_user, list_users, delete_user
 
 USER_HASH = 'pbkdf2:sha256:150000$o7FE9zQM$218d079dcb46ac3dc808efd512f067acc1e4a9a21b790179e90baab439c3ae41'  # == "abcd1234"
@@ -10,6 +8,10 @@ def test_cli_users(session, app):
     res_add = cli_runner.invoke(add_user, ['--username', 'pytest', '--password-hash', USER_HASH])
     assert res_add.exit_code == 0, f'Bad return code when adding "pytest"\n{res_add.output}'
     print('Successfully added new user "pytest" to testing database')
+
+    res_dup_user = cli_runner.invoke(add_user, ['--username', 'pytest', '--password-hash', USER_HASH])
+    res_dup_user_out = res_dup_user.output
+    assert 'Username "pytest" already exists in database' in res_dup_user_out, f'Expected notice that "pytest" user already exists. Got:\n{res_dup_user_out}'
 
     res_list = cli_runner.invoke(list_users)
     res_list_out = res_list.output

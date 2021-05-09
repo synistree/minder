@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from redisent.models import RedisEntry
-from typing import Mapping, Any
+from typing import MutableMapping, Mapping, Any
 
 from minder.errors import MinderError
 
@@ -16,6 +16,8 @@ StatusEntryActions: Mapping[str, str] = {
     'LOGOFF': 'Logged off',
     'JOIN': 'Joined',
     'PART': 'Parted',
+    'DELETE': 'Message Deleted',
+    'EDIT': 'Message Edited',
     'ERROR': 'Error',
     'DEBUG': 'Debug'
 }
@@ -57,7 +59,7 @@ class StatusEntry(RedisEntry):
         if action not in StatusEntryActions:
             raise MinderError(f'Invalid action value provided while building status entry: {action}. Must be one of "{", ".join(StatusEntryActions)}"')
 
-        ent_kwargs = {'action': action, 'message': message}
+        ent_kwargs: MutableMapping[str, Any] = {'action': action, 'message': message}
 
         if context:
             ent_kwargs['context'] = context

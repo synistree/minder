@@ -7,7 +7,7 @@ import sphinx_rtd_theme
 
 sys.path.insert(0, os.path.abspath('../minder'))
 
-from redisent import __version__ as redisent_version
+from redisent import __version__ as redisent_version  # noqa: F402
 
 # -- Project information -----------------------------------------------------
 
@@ -30,7 +30,7 @@ extensions = [
 ]
 
 templates_path = ['_templates']
-exclude_patterns = []
+# exclude_patterns = []
 
 autoclass_content = 'both'
 autodoc_default_options = {
@@ -46,15 +46,15 @@ html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 html_static_path = ['_static']
 pygments_style = 'monokai'
 
-nitpick_classes = []
+# nitpick_classes = []
 nitpicky = True
 nitpick_ignore = []
 
 for name in dir(builtins):
     nitpick_ignore = [('py:class', name)]
 
-for cls_name in nitpick_classes:
-    nitpick_ignore.append(('py:class', cls_name))
+# for cls_name in nitpick_classes:
+#     nitpick_ignore.append(('py:class', cls_name))
 
 source_parsers = {
     '.md': 'recommonmark.parser.CommonMarkParser',

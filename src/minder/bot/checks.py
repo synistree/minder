@@ -2,6 +2,7 @@ import discord
 import logging
 
 from discord.ext import commands
+from typing import cast
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,9 @@ class NoAdminChannel(MinderCheckFailure):
 
 def is_admin():
     async def predicate(ctx: commands.Context) -> bool:
-        usr_cfg = ctx.bot.bot_config.get_user(user_id=ctx.author.id)
+        from minder.bot import MinderBot
+        bot = cast(MinderBot, ctx.bot)
+        usr_cfg = bot.bot_config.get_user(user_id=ctx.author.id)
 
         if not usr_cfg:
             return False
@@ -45,10 +48,13 @@ def in_dm():
 
 def in_admin_channel():
     async def predicate(ctx: commands.Context) -> bool:
+        from minder.bot import MinderBot
+        bot = cast(MinderBot, ctx.bot)
+
         if not ctx.guild or isinstance(ctx.channel, discord.DMChannel):
             return False
 
-        guild_cfg = ctx.bot.bot_config.get_guild(guild_id=ctx.guild.id)
+        guild_cfg = bot.bot_config.get_guild(guild_id=ctx.guild.id)
 
         if not guild_cfg:
             return False
@@ -58,7 +64,7 @@ def in_admin_channel():
         if not bot_chan_id:
             return False
 
-        bot_chan = await ctx.bot.lookup_channel(by_id=bot_chan_id, context_or_guild=ctx)
+        bot_chan = await bot.lookup_channel(by_id=bot_chan_id, context_or_guild=ctx)
 
         if not bot_chan:
             logger.warning(f'Failed to resolve configured bot admin channel "{bot_chan_id}" to channel reference on "{ctx.guild}"')

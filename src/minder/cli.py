@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 user_cli = AppGroup('users', help='Manage web user database entries')
 
+
 @user_cli.command('list', help='List current web users')
 @with_appcontext
 def list_users():
@@ -28,6 +29,7 @@ def list_users():
 
     tbl = tabulate(tbl_out, headers=hdrs, tablefmt='fancy_grid')
     click.secho(tbl)
+
 
 @user_cli.command('add', help='Add a new web user')
 @click.option('-u', '--username', required=True, help='New username to create')
@@ -54,13 +56,14 @@ def add_user(username, password_hash, admin, enabled):
             sys.exit(3)
 
     click.secho(f'Creating new user entry for "{username}" (admin: {admin}, enabled: {enabled})', fg='cyan')
-    
+
     usr = User(username=username, password_hash=password_hash, is_admin=admin, enabled=enabled)
 
     db.session.add(usr)
     db.session.commit()
 
     click.secho(f'Successfully added new user entry for "{username}" in database.', fg='green')
+
 
 @user_cli.command('update', help='Update user parameters in database')
 @click.option('-u', '--username', required=True, help='Username to update')
@@ -95,7 +98,7 @@ def update_user(username, password_hash, enable_admin, enable_user, update_passw
         click.secho(f'-> Updating "{username}" password', fg='cyan')
         usr.password_hash = password_hash
         usr_changed = True
-    
+
     if enable_admin is not None:
         click.secho(f'-> Setting "{username}" admin status: {enable_admin}', fg='cyan')
         usr.is_admin = enable_admin
@@ -109,7 +112,7 @@ def update_user(username, password_hash, enable_admin, enable_user, update_passw
     if not usr_changed:
         click.secho(f'Warning: No changes requested for "{username}"...', fg='yellow')
         return
-    
+
     db.session.commit()
     click.secho(f'Successfully updated "{username}"')
 
@@ -129,7 +132,7 @@ def delete_user(username):
     click.secho(f'Attempting to delete user "{username}" from database...', fg='cyan')
 
     if not click.confirm(f'Are you sure you want to delete "{username}" (ID: {usr.id}) from the database?', default='Y'):
-        click.secho(f'Bailing out based on user response.', fg='yellow')
+        click.secho('Bailing out based on user response.', fg='yellow')
         sys.exit(2)
 
     db.session.delete(usr)

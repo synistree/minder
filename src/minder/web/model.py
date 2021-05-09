@@ -95,5 +95,5 @@ class User(db.Model, UserMixin):  # type: ignore[name-defined]
 
     @classmethod
     def build(cls, username: str, password: str, enabled: bool = True, is_admin: bool = False) -> User:
-        pw_hash = password if password.startswith('pbkdf2:sha256:') else User.generate_password(password) 
+        pw_hash = password if password.startswith('pbkdf2:sha256:') else User.generate_password(password)
         return User(username=username, password_hash=pw_hash, enabled=enabled, is_admin=is_admin)

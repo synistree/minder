@@ -6,9 +6,9 @@ import logging
 
 from datetime import datetime
 from redisent.models import RedisEntry
-from typing import Union, Optional
+from typing import Mapping, Union, Optional
 
-from minder.common import AnyMemberType, AnyChannelType, MemberType, ChannelType
+from minder.common import MemberType, ChannelType, AnyMemberType, AnyChannelType
 from minder.errors import MinderError
 from minder.utils import FuzzyTime, Timezone
 
@@ -99,12 +99,12 @@ class Reminder(RedisEntry):
             else:
                 target_tz = use_timezone
 
-        if isinstance(member, discord.abc.Messageable):
+        if isinstance(member, Mapping):
+            member_id = int(member['id'])
+            member_name = member['name']
+        else:
             member_id = member.id
             member_name = member.name
-        else:
-            member_id = member['id']
-            member_name = member['name']
 
         if channel:
             if isinstance(channel, discord.abc.Messageable):
@@ -131,13 +131,13 @@ class Reminder(RedisEntry):
                         channel_id=channel_id, channel_name=channel_name, provided_when=provided_when, content=content,
                         from_dm=from_dm, timezone_name=tz_name)
 
-    def as_markdown(self, author: MemberType = None, channel: ChannelType = None,
+    def as_markdown(self, author: MemberType = None, channel: Union[ChannelType, discord.abc.GuildChannel] = None,
                     as_embed: Union[discord.Embed, bool] = False) -> Union[discord.Embed, str]:
         channel_str = self.channel_name
         member_str = self.member_name
 
         if channel:
-            channel_str = channel.name if isinstance(channel, discord.DMChannel) else channel.mention
+            channel_str = channel.recipient.name if isinstance(channel, discord.DMChannel) else channel.mention
 
         if author:
             member_str = author.mention

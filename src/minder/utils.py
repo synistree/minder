@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dateparser
 import discord
+from discord.channel import TextChannel
 import emoji
 import pytz
 import logging
@@ -16,7 +17,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from discord.ext import commands
 from typing import Optional, Any, MutableMapping, Mapping, Union
-from pytz.exceptions import NonExistentTimeError, UnknownTimeZoneError, InvalidTimeError
+from pytz import NonExistentTimeError, UnknownTimeZoneError, InvalidTimeError
 
 from minder.errors import MinderError
 from minder.common import DateTimeType
@@ -193,11 +194,11 @@ class FuzzyTimeConverter(commands.Converter):
         self.created_time = created_time.astimezone(self.timezone.timezone)
 
     async def convert(self, ctx: commands.Context, when: str) -> FuzzyTime:
-        author = ctx.author.mention if ctx.author.guild else ctx.author.name
+        author = ctx.author.mention if ctx.guild and isinstance(ctx.channel, discord.TextChannel) else ctx.author.name
 
         if not self.timezone:
-            await ctx.send(f'Sorry {author}, provided timezone `{self.timezone_name}` is not valid')
-            raise commands.BadArgument(f'Invalid timezone string "{self.timezone_name}" when converting fuzzy time string "{when}"')
+            await ctx.send(f'Sorry {author}, provided timezone `{self.timezone.timezone_name}` is not valid')
+            raise commands.BadArgument(f'Invalid timezone string "{self.timezone.timezone_name}" when converting fuzzy time string "{when}"')
 
         try:
             fuz_time = FuzzyTime.build(provided_when=when, created_time=self.created_time, use_timezone=self.timezone)

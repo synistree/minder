@@ -9,11 +9,9 @@ discord-py-slash-command
 emoji
 python-dotenv
 humanize
-IPython
 pyYAML
 SQLAlchemy
 colorlog
-colorama
 
 #redisent devel package
 git+git://github.com/synistree/redisent.git@devel#egg=redisent

@@ -3,34 +3,40 @@ from __future__ import annotations
 import discord
 import logging
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from discord.ext import commands
-from typing import Union, Optional, Mapping
+from typing import Any, Union, Optional, Mapping
 
 from minder.errors import MinderBotError
 
 logger = logging.getLogger(__name__)
 
 DateTimeType = Union[float, int, datetime]
-GuildType = Union[discord.Guild, int]
-MemberType = Union[discord.User, discord.Member]
+MemberType = Union[discord.Member, discord.User]
 ChannelType = Union[discord.TextChannel, discord.DMChannel]
-ContextOrGuild = Union[commands.Context, discord.Guild]
+ContextOrGuildType = Union[discord.Guild, commands.Context]
 
-ChannelType = Union[discord.TextChannel, discord.DMChannel]
-MemberType = Union[discord.User, discord.Member]
-AnyChannelType = Union[ChannelType, Mapping[str, str]]
-AnyMemberType = Union[MemberType, Mapping[str, str]]
+AnyMemberType = Union[MemberType, Mapping[str, Any]]
+AnyChannelType = Union[ChannelType, Mapping[str, Any]]
+
+
+@dataclass
+class DiscordGuild:
+    id: int
+    name: str
+
+
 
 
 @dataclass
 class DiscordMember:
-    id: int
-    name: str
+    id: int = field()
+    name: str = field()
+    guild: Optional[DiscordGuild] = field()
 
-    _guild: Optional[discord.Guild] = None
-    _member: Optional[MemberType] = None
+    _guild: Optional[discord.Guild] = field(default=None, init=False)
+    _member: Optional[MemberType] = field(default=None, init=False)
 
     @property
     def mention(self):
@@ -41,27 +47,43 @@ class DiscordMember:
         if self._guild:
             return self._guild
 
-        if self._member and self._member.guild:
-            return self._member.guild
+        if not self._member or not isinstance(self._member, discord.Member):
+            return None
 
-        return None
+        return self._member.guild
 
     @property
     def member(self) -> Optional[MemberType]:
         return self._member
 
     @classmethod
-    def build(cls, id: int, name: str, context_or_guild: ContextOrGuild = None) -> DiscordMember:
-        if context_or_guild:
-            guild = context_or_guild if not isinstance(context_or_guild, commands.Context) else context_or_guild.guild
-            member = cls.resolve(id, guild)
-        else:
-            guild, member = None, None
+    def from_model(cls, member_or_user: discord.abc.Messageable) -> Optional[DiscordMember]:
+        if not isinstance(member_or_user, (discord.Member, discord.User,)):
+            return None
+
+        guild = member_or_user.guild if isinstance(member_or_user, discord.Member) else None
+        return DiscordMember(id=member_or_user.id, name=member_or_user.name, _guild=guild, _member=member_or_user)
+
+    @classmethod
+    def build(cls, id: int, name: str, context_or_guild: ContextOrGuildType = None) -> DiscordMember:
+        if not context_or_guild:
+            return DiscordMember(id=id, name=name)
+
+        member = cls.resolve(id, context_or_guild)
+
+        if isinstance(context_or_guild, commands.Context):
+            guild = context_or_guild.guild
 
         return DiscordMember(id=id, name=name, _guild=guild, _member=member)
 
     @staticmethod
-    def resolve(id: int, guild: discord.Guild) -> Optional[MemberType]:
+    def resolve(id: int, guild: Optional[ContextOrGuildType]) -> Optional[discord.Member]:
+        if isinstance(guild, commands.Context):
+            guild = guild.guild
+
+        if guild is None:
+            return None
+
         try:
             member = guild.get_member(id)
         except Exception as ex:
@@ -73,23 +95,23 @@ class DiscordMember:
 
         return member
 
-    @classmethod
-    def from_member(cls, member: MemberType) -> DiscordMember:
-        return DiscordMember(id=member.id, name=member.name, _guild=member.guild, _member=member)
-
 
 @dataclass
 class DiscordChannel:
-    id: int
-    name: str
+    id: int = field()
+    name: str = field()
+    guild: Optional[DiscordGuild] = field()
 
-    is_dm: Optional[bool] = None
-    _guild: Optional[discord.Guild] = None
-    _channel: Optional[ChannelType] = None
+    is_dm: Optional[bool] = field(default=None, init=False)
+    _guild: Optional[discord.Guild] = field(default=None, init=False)
+    _channel: Optional[ChannelType] = field(default=None, init=False)
 
     @property
     def mention(self) -> str:
-        return str(self._channel.mention) if self._channel else self.name
+        if not self._channel or not isinstance(self._channel, discord.TextChannel):
+            return self.name
+
+        return self._channel.mention
 
     @property
     def guild(self) -> Optional[discord.Guild]:
@@ -106,22 +128,30 @@ class DiscordChannel:
         return self._channel
 
     @classmethod
-    def build(cls, id: int, name: str, is_dm: bool = None, context_or_guild: ContextOrGuild = None) -> DiscordChannel:
+    def from_model(cls, channel_or_dm: ChannelType) -> Optional[DiscordChannel]:
+        if not isinstance(channel_or_dm, (discord.TextChannel, discord.DMChannel,)):
+            return None
+
+        guild = channel_or_dm.guild if isinstance(channel_or_dm, discord.TextChannel) else None
+        chan_name = channel_or_dm.recipient.name if isinstance(channel_or_dm, discord.DMChannel) else channel_or_dm.name
+        return DiscordChannel(id=channel_or_dm.id, name=chan_name, _guild=guild, _channel=channel_or_dm)
+
+    @classmethod
+    def build(cls, id: int, name: str, is_dm: bool = None, context_or_guild: ContextOrGuildType = None) -> DiscordChannel:
         guild, channel = None, None
 
-        if not context_or_guild:
-            if not name:
-                raise MinderBotError(f'No guild/context provided when looking up channel "{id}" with no provided username. Provide "name" explicitly')
-        else:
-            guild = context_or_guild if not isinstance(context_or_guild, commands.Context) else context_or_guild.guild
-            channel = cls.resolve(id, guild)
+        if not context_or_guild and not name:
+            raise MinderBotError(f'No guild/context provided when looking up channel "{id}" with no provided username. Provide "name" explicitly')
+
+        if context_or_guild:
+            channel = cls.resolve(id, context_or_guild)
 
             if not name:
                 if not channel:
                     ctx = context_or_guild if isinstance(context_or_guild, commands.Context) else None
                     raise MinderBotError(f'Failed to resolve channel ID {id} and no "name" provided.', context=ctx)
 
-                name = channel.name
+                name = channel.recipient.name if isinstance(channel, discord.DMChannel) else channel.name
 
         if is_dm is None and channel:
             is_dm = isinstance(channel, discord.DMChannel)
@@ -129,9 +159,17 @@ class DiscordChannel:
         return DiscordChannel(id=id, name=name, is_dm=is_dm, _guild=guild, _channel=channel)
 
     @staticmethod
-    def resolve(id: int, guild: discord.Guild) -> Optional[ChannelType]:
+    def resolve(id: int, guild: ContextOrGuildType) -> Optional[ChannelType]:
+        if isinstance(guild, commands.Context):
+            if not guild.guild:
+                return None
+
+            guild = guild.guild
+
         try:
             channel = guild.get_channel(id)
+            if not channel or not isinstance(channel, (discord.DMChannel, discord.TextChannel)):
+                return None
         except Exception as ex:
             if not isinstance(ex, discord.errors.NotFound):
                 raise MinderBotError(f'General error lookup up channel ID {id}: {ex}', base_exception=ex)
@@ -140,7 +178,3 @@ class DiscordChannel:
             channel = None
 
         return channel
-
-    @classmethod
-    def from_channel(cls, channel: ChannelType) -> DiscordChannel:
-        return DiscordChannel(id=channel.id, name=channel.name, is_dm=isinstance(channel, discord.DMChannel), _channel=channel)

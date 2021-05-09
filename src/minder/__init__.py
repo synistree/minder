@@ -4,10 +4,10 @@ import os.path
 
 from logging.config import dictConfig
 
-__version__ = '0.11.1'
+__version__ = '0.12.1'
 
 DEFAULT_LOG_LEVEL = os.environ.get('LOG_LEVEL', logging.INFO)
-LOG_LEVEL = logging.DEBUG if os.environ.get('DEBUG', False) else logging.INFO
+LOG_LEVEL = logging.DEBUG if os.environ.get('ENABLE_DEBUG', False) else logging.INFO
 
 cfmt_timestamp = '%(green)s%(asctime)s %(cyan)s%(levelname)s%(reset)s'
 cfmt_module = '%(red)s%(name)s%(reset)s::%(blue)s%(module)s%(reset)s'
