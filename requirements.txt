@@ -29,4 +29,4 @@ WTForms
 Werkzeug
 
 gunicorn
-uwsgi
+#uwsgi
