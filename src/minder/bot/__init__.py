@@ -35,7 +35,7 @@ class MinderBot(commands.Bot):
         if 'description' not in kwargs:
             kwargs['description'] = 'A simple (re)minder bot'
 
-        super().__init__(command_prefix=Config.BOT_PREFIX, **kwargs)
+        super().__init__(command_prefix=Config.BOT_PREFIX, intents=discord.Intents.all(), **kwargs)
 
         self.redis_helper = RedisentHelper(RedisentHelper.build_pool(Config.REDIS_URL))
 
