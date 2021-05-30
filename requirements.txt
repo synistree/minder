@@ -27,3 +27,5 @@ flask-WTF
 WTForms-Alchemy
 WTForms
 Werkzeug
+
+uwsgi
