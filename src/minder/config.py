@@ -1,15 +1,21 @@
 import os
 import string
 import random
+import logging
 
 from dotenv import load_dotenv
 
 from typing import Any, Optional
 
+logger = logging.getLogger(__name__)
+
 env_path = os.environ.get('ENV_PATH', os.path.abspath(os.path.join(os.path.curdir, '.env')))
 
 if not os.path.exists(env_path):
-    raise Exception(f'No ".env" found in "{env_path} or ENV_PATH (if set)')
+    if os.environ.get('SKIP_DOTENV', None):
+        logger.info('Skipping load of dotenv config based on SKIP_DOTENV beingset')
+    else:
+        raise Exception(f'No ".env" found in "{env_path} or ENV_PATH (if set)')
 
 load_dotenv(env_path)
 
