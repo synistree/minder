@@ -28,4 +28,5 @@ WTForms-Alchemy
 WTForms
 Werkzeug
 
+gunicorn
 uwsgi
