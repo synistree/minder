@@ -3,12 +3,15 @@ import IPython
 import os
 import sys
 import logging
+import threading
+import signal
 
 from flask.cli import AppGroup, with_appcontext
 from tabulate import tabulate
 
-from minder.bot import build_bot
+from minder.config import Config
 from minder.errors import get_stacktrace
+from minder.bot import build_bot
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +169,35 @@ def run_cli(ctx: click.Context, debug: bool = False):
 
         if discord_log:
             discord_log.setLevel(logging.DEBUG)
+
+
+@run_cli.command(name='run')
+@click.option('-T', '--token', default=None, help='Optionally provide bot token')
+@click.option('-H', '--host', default='0.0.0.0', help='Hostname for Flask to listen on (default is any IP, "0.0.0.0")')
+@click.option('-P', '--port', type=int, default=5000, help='Port for Flask to listen on (default is 5000)')
+@click.option('--use-reloader/--no-reloader', is_flag=True, default=False, help='Enable or disable automatic reloading by Flask (default is off)')
+def run_both(token: str, host: str, port: int, use_reloader: bool):
+    from minder.web.app import create_app
+
+    token = token or Config.BOT_TOKEN
+
+    click.secho('Starting minder web app and bot...', fg='green')
+
+    bot = build_bot(use_token=token, start_bot=False)
+    app = create_app(hostname=host, port=port, use_reloader=use_reloader)
+
+    def int_handler():
+        click.secho('In int_handler', fg='cyan')
+
+    thr = threading.Thread(target=app.run, kwargs={'threaded': False})
+    thr.daemon = True
+    click.secho('Starting Flask application..', fg='green')
+    thr.start()
+
+    click.secho('Starting bot...', fg='green')
+    # bot.run(token)
+    #await bot.start(
+    click.secho('Bot closing...', fg='green')
 
 
 @run_cli.command(name='run-bot')
