@@ -27,16 +27,14 @@ class DiscordGuild:
     name: str
 
 
-
-
 @dataclass
 class DiscordMember:
     id: int = field()
     name: str = field()
     guild: Optional[DiscordGuild] = field()
 
-    _guild: Optional[discord.Guild] = field(default=None, init=False)
-    _member: Optional[MemberType] = field(default=None, init=False)
+    _guild: Optional[discord.Guild] = field(default=None)
+    _member: Optional[MemberType] = field(default=None)
 
     @property
     def mention(self):

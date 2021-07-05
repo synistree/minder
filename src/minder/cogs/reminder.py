@@ -12,6 +12,7 @@ from discord_slash import cog_ext, SlashContext
 from typing import List, Optional, cast
 
 from minder.bot.checks import is_admin
+from minder.bot.menus import ConfirmMenu
 from minder.cogs.base import BaseCog
 from minder.common import ChannelType
 from minder.errors import build_stacktrace_embed
@@ -173,7 +174,18 @@ class ReminderCog(BaseCog, name='reminder'):
         user_tz = Timezone.build(timezone)
 
         fuzzy_when = FuzzyTime.build(provided_when=when, use_timezone=user_tz)
-        await ctx.send(f'Would add new reminder for `{fuzzy_when.resolved_time}` with ```\n{content}\n``` based on "{when}"')
+        reminder = Reminder.build(fuzzy_when, member=ctx.author, channel=ctx.channel, content=content)  # type: ignore[arg-type]
+
+        reminder.store(self.bot.redis_helper)
+        reminder_md = cast(discord.Embed, reminder.as_markdown(ctx.author, as_embed=True))  # type: ignore[arg-type]
+        logger.info(f'Successfully created a new reminder for "{ctx.author.name}" via slash command')
+        logger.debug(f'Slash Command Reminder Reminder:\n{reminder.dump()}')
+
+        self.bot.scheduler.add_job(self._process_reminder, kwargs={'reminder': reminder, 'added_at': datetime.now()}, trigger='date',
+                                   run_date=reminder.trigger_dt, id=reminder.redis_name)
+        logger.info(f'Scheduled new reminder job at "{reminder.trigger_dt.ctime()}"')
+
+        await ctx.send(f'Adding new reminder for `{fuzzy_when.resolved_time.ctime()}` :wink:', embed=reminder_md)
 
     @cog_ext.cog_subcommand(base='reminders', name='clean', description='Purge completed or all reminders')
     async def _reminders_clean(self, ctx: SlashContext, complete_only: bool = True, member: discord.Member = None):
@@ -241,14 +253,20 @@ class ReminderCog(BaseCog, name='reminder'):
 
         reminder.store(self.bot.redis_helper)
         reminder_md = cast(discord.Embed, reminder.as_markdown(ctx.author, ctx.channel, as_embed=True))  # type: ignore[arg-type]
-        logger.info(f'Successfully added new reminder for "{ctx.author.name}"')
+        logger.info(f'Successfully created a new reminder for "{ctx.author.name}"')
         logger.debug(f'Reminder:\n{reminder.dump()}')
+
+        confirm = await ConfirmMenu(f'Create reminder at `{reminder.trigger_dt.ctime()}` for `{content}`?').prompt(ctx)
+
+        if not confirm:
+            logger.info(f'Canceling reminder for {ctx.author.name} based on prompt response')
+            return
 
         self.bot.scheduler.add_job(self._process_reminder, kwargs={'reminder': reminder, 'added_at': dt_now}, trigger='date',
                                    run_date=reminder.trigger_dt, id=reminder.redis_name)
         logger.info(f'Scheduled new reminder job at "{reminder.trigger_dt.ctime()}"')
 
-        await ctx.send(f'Adding new reminder for {ctx.author.mention}', embed=reminder_md)
+        await ctx.send(f'Adding new reminder for {ctx.author.mention} at {reminder.trigger_dt.ctime()}`', embed=reminder_md)
 
     @commands.guild_only()
     @reminders.command(name='clean')

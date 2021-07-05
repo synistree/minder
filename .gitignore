@@ -1,5 +1,6 @@
 .DS_Store
 .env*
+.coverage*
 /.vscode
 *.code-workspace
 /.run/

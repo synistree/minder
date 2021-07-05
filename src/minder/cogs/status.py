@@ -3,9 +3,13 @@ from __future__ import annotations
 import discord
 import logging
 
+from discord.ext import commands
+
 from minder.common import DiscordMember, DiscordChannel
 from minder.cogs.base import BaseCog
 from minder.models.status import StatusEntry
+
+from minder.bot.menus import ConfirmMenu
 
 logger = logging.getLogger(__name__)
 
@@ -39,3 +43,13 @@ class StatusCog(BaseCog, name='status'):
         edit_ctx = {'member': mem, 'channel': chan, 'before': before.content, 'after': after.content}
         ent = StatusEntry.build('EDIT', f'Message edited in "{chan.name}" by "{mem.name}"', context=edit_ctx)
         ent.store(self.bot.redis_helper)
+
+    @commands.command(name='prompt-me')
+    async def prompt_me(self, ctx: commands.Context, prompt_with: str) -> None:
+        confirm = await ConfirmMenu(f'Are you sure about this {ctx.author.mention}?```\n{prompt_with}\n```').prompt(ctx)
+
+        if not confirm:
+            await ctx.send(f'Alrighty, nevermind {ctx.author.mention}')
+            return
+
+        await ctx.send(f'10-4 {ctx.author.mention}, would do :wink:')

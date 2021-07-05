@@ -155,3 +155,9 @@ def reminder_by_id(id):
 
     msg_out = f'Successfully updated reminder ID {id} with new attributes.'
     return jsonify({'message': msg_out, 'data': {'form': form_dict, 'new_reminder': rem.as_dict()}, 'is_error': False})
+
+
+@api_bp.route('/users', methods=['GET'])
+def users():
+    from minder.web.model import User
+    return jsonify({'users': [usr.dump() for usr in User.query.all()]})

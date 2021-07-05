@@ -19,3 +19,4 @@ redislite
 types-pytz
 discord.py-stubs
 sqlalchemy-stubs
+sqlalchemy2-stubs

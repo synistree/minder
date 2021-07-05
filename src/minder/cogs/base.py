@@ -10,6 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 class BaseCog(commands.Cog):
+    cog_name: str
+
     _subclasses: List[Type[BaseCog]] = []
 
     def __init__(self, bot, *args, **kwargs) -> None:
@@ -17,8 +19,12 @@ class BaseCog(commands.Cog):
         super().__init__()
 
     @classmethod
-    def __init_subclass__(cls) -> None:
+    def __init_subclass__(cls, name: str = None) -> None:
+        cls.cog_name = name or cls.__qualname__
         cls._subclasses.append(cls)
+
+    async def _sync_init(self) -> None:
+        pass
 
     @property
     def bot_ready(self) -> bool:

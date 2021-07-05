@@ -1,3 +1,8 @@
+aiohttp
+aiohttp-jinja2
+aiosqlite
+aiohttp-debugtoolbar
+jinja2
 APScheduler
 click
 cogwatch
@@ -9,7 +14,7 @@ discord-py-slash-command
 emoji
 python-dotenv
 humanize
-pyYAML
+PyYAML
 SQLAlchemy
 colorlog
 
@@ -30,3 +35,4 @@ Werkzeug
 
 gunicorn
 #uwsgi
+uvloop

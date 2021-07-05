@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import dateparser
 import discord
-from discord.channel import TextChannel
 import emoji
 import pytz
 import logging

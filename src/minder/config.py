@@ -55,11 +55,15 @@ class Config:
     DEFAULT_CHECK_INTERVAL: int = _load_from_environ('DEFAULT_CHECK_INTERVAL', 10)
     SYNC_SLASH_COMMANDS: bool = _load_from_environ('SYNC_SLASH_COMMANDS', True)
     EXPLAIN_TEMPLATE_LOADING: bool = _load_from_environ('EXPLAIN_TEMPLATE_LOADING', False)
+    ENABLE_BOT_JSONAPI: bool = _load_from_environ('ENABLE_BOT_JSONAPI', True)
+    BOT_WEB_HOST: str = _load_from_environ('BOT_WEB_HOST', _load_from_environ('FLASK_HOST', None))
+    BOT_WEB_PORT: int = _load_from_environ('BOT_WEB_PORT', 9091)
 
     # Required Private Values
     BOT_TOKEN: str = _load_from_environ('BOT_TOKEN', None)
     SECRET_KEY: str = _load_from_environ('SECRET_KEY', _build_secret_key())
     SQLALCHEMY_URI: str = _load_from_environ('SQLALCHEMY_URI', None)
     SQLALCHEMY_DATABASE_URI: str = _load_from_environ('SQLALCHEMY_DATABASE_URI', _load_from_environ('SQLALCHEMY_URI', None))
+    BOT_SQLALCHEMY_URI: str = _load_from_environ('BOT_SQLALCHEMY_URI', None)
 
-    _secret_attrs = ['BOT_TOKEN', 'SECRET_KEY', 'SQLALCHEMY_URI', 'SQLALCHEMY_DATABASE_URI']
+    _secret_attrs = ['BOT_TOKEN', 'SECRET_KEY', 'SQLALCHEMY_URI', 'SQLALCHEMY_DATABASE_URI', 'BOT_SQLALCHEMY_URI']

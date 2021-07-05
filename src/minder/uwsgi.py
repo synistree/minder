@@ -10,11 +10,12 @@ app = create_app()
 
 
 def start_bot():
-    bot = build_bot(start_bot=False)
-    loop = bot.loop
     logger.info('Starting minder Bot under uWSGI...')
+    bot = build_bot(start_bot=True)
+    loop = bot.loop
 
     try:
+        loop.run_in_executor(None, app.run, kwargs={'reload': False, 'eager_loader': False})
         loop.run_until_complete(bot.start(Config.BOT_TOKEN))
         logger.info('Bot finished, exiting')
     except KeyboardInterrupt:

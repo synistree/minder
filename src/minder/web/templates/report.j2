@@ -1,0 +1,92 @@
+{%- extends 'base.j2' %}
+{%- block styles_footer %}
+<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css"/>
+{% endblock %}
+{%- block scripts_mid %}
+<script src="//cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
+<script>
+  function setupReportTable() {
+    var reportTable = $('#report_table').DataTable({
+      responsive: true
+    });
+
+    $(reportTable).show();
+
+    console.log(`Done build report table @ ${reportTable}`);
+
+    return reportTable;
+  }
+
+  function treeClickHandler(e, data) {
+    console.log(`Received click on Guild treeview: ${e} (data: ${data})`);
+  }
+
+  function buildDetailTree() {
+    var jsTree = $('#guild_tree').jstree();
+
+    $('#guild_tree').on('changed.jstree', treeClickHandler);
+
+    console.log(`Done setting up Guild tree @ ${jsTree}`);
+    return jsTree;
+  }
+</script>
+{% endblock %}
+{%- block js_on_ready %}
+  var jsEntities = {
+    reportTable: setupReportTable(),
+    jsTree: buildDetailTree()
+  };
+{% endblock %}
+{%- block app_content %}
+<div class="row">
+  <div class="col col-md-8">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">User Report</h5>
+        <h6 class="card-subtitle mb-2 text-muted">Breakdown of known users by guild</h6>
+        <p class="card-text">
+          <table id="report_table" class="table table-responsive table-inverse">
+            <thead>
+              <tr>
+                {%- for hdr_name, hdr_title in report_headers.items() %}
+                <th data-name="{{ hdr_name }}">{{ hdr_title }}</th>
+                {%- endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {%- for ent_id, ent in report_items.items() %}
+              <tr data-entry-id="{{ ent_id }}">
+                {{ ent.build_html_row() }}
+              </tr>
+              {%- endfor %}
+            </tbody>
+          </table>
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="col col-md-4">
+    <div id="report_card" class="card">
+      <div class="card-body">
+        <h6 class="card-subtitle mb-2 text-muted">User details for <span id="user_details_name">&nbsp;</span></h6>
+        <p class="card-text">
+          <div id="user_detail_tree"></div>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col col-md-12">
+    <div id="guild_card" class="card">
+      <div class="card-body">
+        <h5 class="card-title">Guild Details</h5>
+        <h6 class="card-subtitle mb-2 text-muted">Detailed breakdown per-guild</h6>
+        <p class="card-text">
+          <div id="guild_tree"></div>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

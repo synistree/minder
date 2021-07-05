@@ -4,7 +4,6 @@ import logging
 from discord.ext import commands
 
 from redisent.errors import RedisError
-from typing import cast
 
 from minder.cogs.base import BaseCog
 from minder.errors import get_stacktrace

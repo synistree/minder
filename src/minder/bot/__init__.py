@@ -20,6 +20,14 @@ from minder.common import MemberType, ChannelType, ContextOrGuildType
 logger = logging.getLogger(__name__)
 COG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '../cogs'))
 
+try:
+    import uvloop
+except ImportError:
+    logger.warning('Cannot find uvloop package, using built in asyncio event loop')
+else:
+    uvloop.install()
+    logger.info('Using uvloop with asyncio')
+
 
 class MinderBot(commands.Bot):
     redis_helper: RedisentHelper
@@ -73,9 +81,7 @@ class MinderBot(commands.Bot):
 
     async def _sync_init(self) -> None:
         for cog in self.cogs.values():
-            init_fn = getattr(cog, '_sync_init', None)
-            if init_fn:
-                await init_fn()
+            await cog._sync_init()
 
         logger.info('Finished running sync_init on all cogs')
 
@@ -303,16 +309,17 @@ class MinderBot(commands.Bot):
 
 
 def build_bot(use_token: str = None, start_bot: bool = True, **bot_kwargs) -> MinderBot:
+    use_token = use_token or Config.BOT_TOKEN
     bot = MinderBot(**bot_kwargs)
     bot.add_cog(BaseCog(bot))
     bot.add_cog(ErrorHandlerCog(bot))
 
     for cog_cls in BaseCog._subclasses:
-        cls_name = cog_cls.__class__.__qualname__
-        logger.info(f'Registering cog "{cls_name}"')
+        logger.info(f'Registering cog "{cog_cls.cog_name}"')
         bot.add_cog(cog_cls(bot))
 
-    if start_bot:
-        bot.run(use_token or Config.BOT_TOKEN)
+    if not start_bot:
+        return bot
 
-    return bot
+    logger.info('Starting bot..')
+    bot.run(use_token)

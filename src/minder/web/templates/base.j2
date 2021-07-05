@@ -1,20 +1,11 @@
-{% extends 'bootstrap/base.html' %}
-{% import 'macros.j2' as m with context %}
-
-{% block title %}
-    {%- if title %}{{ title }} - {% endif%}minder Web UI
-{% endblock %}
-
-{% block navbar %}
-{% include 'navbar.j2' %}
-{% endblock %}
-
-{% block styles -%}
+{%- extends 'bootstrap/base.html' %}
+{%- import 'macros.j2' as m with context %}
+{%- block title %}{% if title %}{{ title }} - {% endif%}minder Web UI{% endblock %}
+{%- block navbar %}{% include 'navbar.j2' %}{% endblock %}
+{%- block styles %}
 {{ super() }}
 <link href="//stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
 <link href="//stackpath.bootstrapcdn.com/bootswatch/4.5.2/darkly/bootstrap.min.css" rel="stylesheet">
-{#<link href="//stackpath.bootstrapcdn.com/bootswatch/3.4.1/darkly/bootstrap.min.css" rel="stylesheet">#}
-{#<link href="{{ url_for('static', filename='css/bootstrap-darkly.min.css') }}" rel="stylesheet">#}
 <link href="{{ url_for('static', filename='css/minder.css') }}" rel="stylesheet">
 <link href="{{ url_for('static', filename='css/jquery-ui.min.css') }}" rel="stylesheet">
 <link href="{{ url_for('static', filename='css/jquery-ui.theme.min.css') }}" rel="stylesheet">
@@ -25,10 +16,9 @@
 <link href="{{ url_for('static', filename='css/select.dataTables.min.css') }}" rel="stylesheet">
 <link href="{{ url_for('static', filename='css/buttons.dataTables.min.css') }}" rel="stylesheet"> <!-- //cdn.datatables.net/buttons/1.6.5/css/buttons.dataTables.min.css -->
 {%- endif %}
-{% block styles_footer %}{% endblock %}
-{% endblock styles %}
-
-{% block scripts %}
+{%- block styles_footer %}{% endblock %}
+{%- endblock styles %}
+{%- block scripts %}
 {{ super() }}
 {{ moment.include_moment(version='2.29.1') }}
 {%- if include_datatables %}
@@ -43,18 +33,20 @@
 <script src="{{ url_for('static', filename='scripts/buttons.colVis.min.js') }}"></script>
 {%- endif %}
 <script src="{{ url_for('static', filename='scripts/minder.js') }}"></script>
+{%- block scripts_mid %}{% endblock %}
 <script>
   $(document).ready(function () {
-    $(".{{ request.path[1:] or 'overview' }}-link").addClass("active");
+    {% block js_pre_ready %}{% endblock %}
+    var overviewLink = $(".{{ request.path[1:] or 'overview' }}-link");
+    if (overviewLink != null) {
+      overviewLink.addClass("active");
+    }
     {% block js_on_ready %}{% endblock %}
   });
 </script>
-
-{% block scripts_footer %}{% endblock %}
-
-{% endblock %}
-
-{% block content %}
+{%- block scripts_footer %}{% endblock %}
+{%- endblock %}
+{%- block content %}
 <div class="container-fluid">
   {%- with messages = get_flashed_messages() %}
     {%- if messages %}
@@ -63,8 +55,8 @@
       {%- endfor %}
     {%- endif %}
   {%- endwith %}
-  {% block app_content %}{% endblock %}
+  {%- block app_content %}{% endblock %}
 </div>
-{% endblock %}
+{%- endblock %}
 
 {# vim: set ts=2 sw=2 smarttab autoindent expandtab ft=html: #}

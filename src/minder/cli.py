@@ -4,7 +4,6 @@ import os
 import sys
 import logging
 import threading
-import signal
 
 from flask.cli import AppGroup, with_appcontext
 from tabulate import tabulate
@@ -195,8 +194,7 @@ def run_both(token: str, host: str, port: int, use_reloader: bool):
     thr.start()
 
     click.secho('Starting bot...', fg='green')
-    # bot.run(token)
-    #await bot.start(
+    bot.run(token)
     click.secho('Bot closing...', fg='green')
 
 

@@ -47,6 +47,12 @@ def overview():
     return render_template('overview.j2', title='Welcome to Minder Web UI')
 
 
+@app_bp.route('/report')
+@login_required
+def report():
+    return render_template('report.j2', title='User/Guild Report')
+
+
 @app_bp.route('/manage', methods=['GET'])
 @login_required
 def manage():
