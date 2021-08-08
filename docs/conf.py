@@ -67,7 +67,7 @@ source_suffix = {
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
-    'redislite': ('https://redisent.readthedocs.io/en/latest/', None)
+    'redisent': ('https://redisent.readthedocs.io/en/latest/', None)
 }
 
 

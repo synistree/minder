@@ -188,7 +188,7 @@ def run_both(token: str, host: str, port: int, use_reloader: bool):
     def int_handler():
         click.secho('In int_handler', fg='cyan')
 
-    thr = threading.Thread(target=app.run, kwargs={'threaded': False})
+    thr = threading.Thread(target=app.run, kwargs={'threaded': True})
     thr.daemon = True
     click.secho('Starting Flask application..', fg='green')
     thr.start()
@@ -235,7 +235,7 @@ def run_web(ctx: click.Context, host: str, port: int, use_reloader: bool = False
     click.secho('Flask application created. Starting now...', fg='green')
 
     try:
-        app.run(debug=debug)
+        app.run(debug=debug, use_reloader=use_reloader)
     except Exception as ex:
         exc_info = get_stacktrace(ex)
         click.secho(f'Error running minder Flask application: {ex}', fg='red')

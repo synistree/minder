@@ -3,8 +3,9 @@ from __future__ import annotations
 import discord
 import logging
 
+from aiohttp import web
 from discord.ext import commands
-from typing import List, Type
+from typing import List, Type, Mapping
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +14,7 @@ class BaseCog(commands.Cog):
     cog_name: str
 
     _subclasses: List[Type[BaseCog]] = []
+    _web_routes: Mapping[str, web.View] = {}
 
     def __init__(self, bot, *args, **kwargs) -> None:
         self.bot = bot

@@ -16,7 +16,12 @@ tox-envfile
 tox-travis
 pytest-flask-sqlalchemy
 redislite
+types-dateparser
+types-emoji
 types-pytz
+types-redis
+types-PyYAML
+types-tabulate
 discord.py-stubs
 sqlalchemy-stubs
 sqlalchemy2-stubs

@@ -38,6 +38,8 @@ class FlaskApp(Flask):
     def __init__(self, import_name: str, *args, hostname: str = None, port: str = None, use_reloader: bool = None,
                  overrides: Mapping[str, Any] = None, use_redis: RedisType = None, **kwargs) -> None:
         overrides = overrides or {}
+        if use_reloader is None:
+            use_reloader = Config.ENABLE_AUTORELOAD
 
         # Enforce setting "instance_relative_config" to True when setting up the Flask application
         kwargs['instance_relative_config'] = True
@@ -50,7 +52,7 @@ class FlaskApp(Flask):
 
         self._hostname = hostname or Config.FLASK_HOST
         self._port = port or Config.FLASK_PORT
-        self._use_reloader = use_reloader or Config.ENABLE_AUTORELOAD
+        self._use_reloader = use_reloader
 
         self.config.from_object('minder.config.Config')
 
@@ -148,7 +150,7 @@ class FlaskApp(Flask):
         super().run(*args, **kwargs)
 
 
-def create_app(hostname: str = None, port: Union[int, str] = None, use_reloader: bool = None, overrides: Mapping[str, Any] = None,
+def create_app(hostname: str = None, port: Union[int, str] = None, use_reloader: bool = False, overrides: Mapping[str, Any] = None,
                use_redis: RedisType = None) -> FlaskApp:
     """
     Create custom Flask application using subclassed :py:cls:`FlaskApp` implementation

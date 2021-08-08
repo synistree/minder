@@ -3,7 +3,7 @@ from __future__ import annotations
 import discord
 import logging
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, InitVar
 from datetime import datetime
 from discord.ext import commands
 from typing import Any, Union, Optional, Mapping
@@ -31,10 +31,9 @@ class DiscordGuild:
 class DiscordMember:
     id: int = field()
     name: str = field()
-    guild: Optional[DiscordGuild] = field()
 
-    _guild: Optional[discord.Guild] = field(default=None)
-    _member: Optional[MemberType] = field(default=None)
+    _guild: InitVar[discord.Guild] = field(default=None)
+    _member: InitVar[MemberType] = field(default=None)
 
     @property
     def mention(self):
@@ -98,11 +97,10 @@ class DiscordMember:
 class DiscordChannel:
     id: int = field()
     name: str = field()
-    guild: Optional[DiscordGuild] = field()
 
     is_dm: Optional[bool] = field(default=None, init=False)
-    _guild: Optional[discord.Guild] = field(default=None, init=False)
-    _channel: Optional[ChannelType] = field(default=None, init=False)
+    _guild: InitVar[discord.Guild] = field(default=None)
+    _channel: InitVar[ChannelType] = field(default=None)
 
     @property
     def mention(self) -> str:
