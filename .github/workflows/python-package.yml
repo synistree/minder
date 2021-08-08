@@ -34,6 +34,3 @@ jobs:
     - name: Test with pytest
       run: |
         pytest -v ./testing 
-    - name: Run mypy test
-      run: |
-        mypy -p minder
