@@ -28,8 +28,7 @@ class BackendCog(BaseCog, name='backend'):
             aiohttp_debugtoolbar.setup(self.app)
 
         self.app['bot'] = self.bot
-        self.env = setup_jinja(self.app, loader=jinja2.PackageLoader('minder.bot'))
-        jinja2.Environment(loader=jinja2.PackageLoader('minder.bot'))
+        self.env = setup_jinja(self.app, loader=jinja2.PackageLoader('minder.web'))
 
         # Import views to populate routes table and register
         import minder.bot.views  # noqa: F401
