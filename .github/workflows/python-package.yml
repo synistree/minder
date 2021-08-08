@@ -33,4 +33,7 @@ jobs:
         flake8 ./src/minder --count --select=E9,F63,F7,F82 --show-source --statistics
     - name: Test with pytest
       run: |
-        pytest -v ./testing
+        pytest -v ./testing 
+    - name: Run mypy test
+      run: |
+        mypy -p minder
