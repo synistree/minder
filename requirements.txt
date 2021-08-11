@@ -2,6 +2,7 @@ aiohttp
 aiohttp-jinja2
 aiosqlite
 aiohttp-debugtoolbar
+colored
 jinja2
 APScheduler
 click

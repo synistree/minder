@@ -1,11 +1,15 @@
 import os
+import os.path
+import ssl
 import string
 import random
 import logging
 
 from dotenv import load_dotenv
-
 from typing import Any, Optional
+
+from minder.errors import MinderError
+
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +62,10 @@ class Config:
     ENABLE_BOT_JSONAPI: bool = _load_from_environ('ENABLE_BOT_JSONAPI', True)
     BOT_WEB_HOST: str = _load_from_environ('BOT_WEB_HOST', _load_from_environ('FLASK_HOST', None))
     BOT_WEB_PORT: int = _load_from_environ('BOT_WEB_PORT', 9091)
+    SSL_ENABLE: bool = _load_from_environ('SSL_ENABLE', False)
+    SSL_CAFILE: str = _load_from_environ('SSL_CAFILE', None)
+    SSL_CERT: str = _load_from_environ('SSL_CERT', None)
+    SSL_KEY: str = _load_from_environ('SSL_KEY', None)
 
     # Required Private Values
     BOT_TOKEN: str = _load_from_environ('BOT_TOKEN', None)
@@ -67,3 +75,32 @@ class Config:
     BOT_SQLALCHEMY_URI: str = _load_from_environ('BOT_SQLALCHEMY_URI', None)
 
     _secret_attrs = ['BOT_TOKEN', 'SECRET_KEY', 'SQLALCHEMY_URI', 'SQLALCHEMY_DATABASE_URI', 'BOT_SQLALCHEMY_URI']
+
+    @classmethod
+    def get_ssl_context(cls, ignore_error: bool = False) -> Optional[ssl.SSLContext]:
+        if not cls.SSL_ENABLE:
+            return None
+
+        for name in ['SSL_CAFILE', 'SSL_CERT', 'SSL_KEY']:
+            cfg_file = getattr(cls, name, None)
+
+            if not cfg_file:
+                msg = f'SSL_ENABLE is set but no config found for "{cfg_file}"'
+
+                if not ignore_error:
+                    raise MinderError(msg)
+
+                logger.warning(f'{msg}. Ignoring based on arguments and using HTTP')
+
+            if not os.path.exists(cfg_file) or not os.path.stat(cfg_file):
+                msg = f'SSL_ENABLE is set but cannot find "{name}" file in "{cfg_file}": Path does not exist or is unreadable'
+
+                if not ignore_error:
+                    raise MinderError(msg)
+
+                logger.warning(f'{msg}. Ignoring based on arguments and using HTTP')
+
+        ssl_ctx = ssl.create_default_context(cafile=Config.SSL_CAFILE)
+        ssl_ctx.load_cert_chain(certfile=cls.SSL_CERT, keyfile=cls.SSL_KEY)
+
+        return ssl_ctx

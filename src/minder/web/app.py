@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 
 from minder.cli import register_app_cli
 from minder.config import Config
@@ -12,12 +13,10 @@ from flask_bootstrap import Bootstrap, WebCDN
 from flask_login import LoginManager
 from flask_moment import Moment
 from flask_pretty import Prettify
-
 from redisent.common import RedisType
 from redisent.helpers import RedisentHelper
-
 from typing import Any, Mapping, Union
-
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.exceptions import Unauthorized
 
 moment = Moment()
@@ -35,7 +34,7 @@ class FlaskApp(Flask):
 
     redis_helper: RedisentHelper
 
-    def __init__(self, import_name: str, *args, hostname: str = None, port: str = None, use_reloader: bool = None,
+    def __init__(self, import_name: str, *args, hostname: str = None, port: str = None, use_reloader: bool = None, use_https: bool = None,
                  overrides: Mapping[str, Any] = None, use_redis: RedisType = None, **kwargs) -> None:
         overrides = overrides or {}
         if use_reloader is None:
@@ -147,11 +146,15 @@ class FlaskApp(Flask):
         kwargs['host'] = self._hostname
         kwargs['port'] = int(self._port)
 
+        if threading.current_thread() is not threading.main_thread():
+            logger.warning('Flask application running on non-main thread. Setting debug and use_reloader off')
+            kwargs.update({'use_reloader': False, 'threaded': True})
+
         super().run(*args, **kwargs)
 
 
-def create_app(hostname: str = None, port: Union[int, str] = None, use_reloader: bool = False, overrides: Mapping[str, Any] = None,
-               use_redis: RedisType = None) -> FlaskApp:
+def create_app(hostname: str = None, port: Union[int, str] = None, use_reloader: bool = None, use_https: bool = None,
+               overrides: Mapping[str, Any] = None, use_redis: RedisType = None, wrap_wsgi_app: bool = None) -> FlaskApp:
     """
     Create custom Flask application using subclassed :py:cls:`FlaskApp` implementation
 
@@ -160,11 +163,22 @@ def create_app(hostname: str = None, port: Union[int, str] = None, use_reloader:
     :param use_reloader: if provided, the Flask runner will watch the source files and restart if anything changes (note, this has
                          been known to cause issues on Darwin/OSX if enabled). If not provided, :py:attr:`Config.ENABLE_AUTORELOAD`
                          is used
+    :param use_https: if set, the Flask web server will run in HTTPS/SSL mode. Use ``ca_certs``, ``ssl_cert`` and ``ssl_key`` to provide
+                      the necessary x509 CA Chain along with PEM-encoded certificate and private key (falling back to ``Config.SSL*`` provided
+                      values
     :param overrides: optional mapping of config values to override
     :param use_redis: optionally override the Redis connection to provide to :py:cls:`RedisentHelper`
+    :param wrap_wsgi_app: if set, wrap the :py:attr:`Flask.wsgi_app` instance with :py:meth:`ProxyApp` for automatically handling
+                          redirection from HTTP to HTTPS (when enabled)
     """
 
+    overrides = overrides or {}
     hostname = hostname or Config.FLASK_HOST
     port = str(port or Config.FLASK_PORT)
 
-    return FlaskApp(__name__, hostname=hostname, port=port, use_reloader=use_reloader, overrides=overrides, use_redis=use_redis)
+    app = FlaskApp(__name__, hostname=hostname, port=port, use_reloader=use_reloader, use_https=use_https, use_redis=use_redis, overrides=overrides)
+
+    if app.wsgi_app:
+        app.wsgi_app = ProxyFix(app.wsgi_app)
+
+    return app
